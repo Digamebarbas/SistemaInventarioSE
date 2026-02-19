@@ -12,7 +12,6 @@ import sys
 import django
 import csv
 import json
-import requests
 from pathlib import Path
 
 # Setup Django
