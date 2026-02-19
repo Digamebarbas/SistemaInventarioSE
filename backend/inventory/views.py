@@ -2,12 +2,12 @@ import csv
 import io
 
 from django.db import transaction
-from rest_framework import permissions, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from config.permissions import IsAdminOrReadOnly
+from config.permissions import CanCreateInventoryMovement, IsAdminOrReadOnly, is_platform_admin
 
 from .models import InventoryMovement, Product
 from .serializers import InventoryMovementSerializer, ProductSerializer
@@ -140,7 +140,7 @@ class InventoryMovementViewSet(viewsets.ModelViewSet):
 		"created_by",
 	)
 	serializer_class = InventoryMovementSerializer
-	permission_classes = [permissions.IsAuthenticated]
+	permission_classes = [CanCreateInventoryMovement]
 	http_method_names = ["get", "post", "head", "options"]
 	filterset_fields = [
 		"movement_type",
@@ -149,5 +149,16 @@ class InventoryMovementViewSet(viewsets.ModelViewSet):
 		"customer",
 		"created_by",
 	]
+
+	def get_queryset(self):
+		qs = InventoryMovement.objects.select_related(
+			"product",
+			"supplier",
+			"customer",
+			"created_by",
+		)
+		if is_platform_admin(self.request.user):
+			return qs
+		return qs.filter(created_by=self.request.user)
 
 # Create your views here.

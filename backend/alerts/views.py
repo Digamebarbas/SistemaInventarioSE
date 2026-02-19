@@ -1,7 +1,9 @@
 from django.utils import timezone
-from rest_framework import permissions, viewsets
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from config.permissions import IsPlatformAdmin
 
 from .models import Alert
 from .serializers import AlertSerializer
@@ -10,7 +12,7 @@ from .serializers import AlertSerializer
 class AlertViewSet(viewsets.ModelViewSet):
 	queryset = Alert.objects.select_related("product")
 	serializer_class = AlertSerializer
-	permission_classes = [permissions.IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 	http_method_names = ["get", "patch", "head", "options"]
 
 	@action(detail=True, methods=["patch"])

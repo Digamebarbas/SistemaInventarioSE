@@ -1,14 +1,15 @@
 from django.db import models
 from django.db.models import Count, Sum
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from config.permissions import IsPlatformAdmin
 
 from inventory.models import InventoryMovement, Product
 
 
 class CurrentStockReport(APIView):
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
 		products = Product.objects.values(
@@ -22,7 +23,7 @@ class CurrentStockReport(APIView):
 
 
 class LowStockReport(APIView):
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
 		products = Product.objects.filter(
@@ -32,7 +33,7 @@ class LowStockReport(APIView):
 
 
 class MovementRangeReport(APIView):
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
 		start = request.query_params.get("start")
@@ -56,7 +57,7 @@ class MovementRangeReport(APIView):
 
 
 class EntriesBySupplierReport(APIView):
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
 		qs = InventoryMovement.objects.filter(movement_type=InventoryMovement.TYPE_IN)
@@ -69,7 +70,7 @@ class EntriesBySupplierReport(APIView):
 
 
 class ExitsByCustomerReport(APIView):
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
 		qs = InventoryMovement.objects.filter(movement_type=InventoryMovement.TYPE_OUT)
@@ -82,7 +83,7 @@ class ExitsByCustomerReport(APIView):
 
 
 class TopProductsReport(APIView):
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
 		qs = InventoryMovement.objects.filter(movement_type=InventoryMovement.TYPE_OUT)

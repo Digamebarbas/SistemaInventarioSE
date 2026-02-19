@@ -26,19 +26,30 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class InventoryMovementSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    movement_type_label = serializers.CharField(source="get_movement_type_display", read_only=True)
+    supplier_name = serializers.CharField(source="supplier.name", read_only=True)
+    customer_name = serializers.CharField(source="customer.name", read_only=True)
+
     class Meta:
         model = InventoryMovement
         fields = [
             "id",
             "product",
+            "product_name",
             "movement_type",
+            "movement_type_label",
             "quantity",
             "previous_stock",
             "new_stock",
             "reason",
             "supplier",
+            "supplier_name",
             "customer",
+            "customer_name",
             "created_by",
+            "created_by_username",
             "created_at",
         ]
         read_only_fields = ["previous_stock", "new_stock", "created_by", "created_at"]
