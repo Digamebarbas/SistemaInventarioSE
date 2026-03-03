@@ -1,0 +1,57 @@
+%%{init: {'theme':'base','themeVariables': {
+  'fontFamily': 'Poppins, Arial, sans-serif',
+  'primaryColor': '#EEF3F9',
+  'primaryTextColor': '#0F1C2E',
+  'primaryBorderColor': '#7C8AA6',
+  'lineColor': '#6D7C9B',
+  'secondaryColor': '#FDE7EF',
+  'tertiaryColor': '#E6F4FF'
+}}}%%
+flowchart TD
+    A([Inicio]) --> B([Login])
+    B -->|Credenciales validas| C([Dashboard])
+    B -->|Credenciales invalidas| B
+
+    C --> D([Gestion de productos])
+    C --> E([Gestion de movimientos])
+    C --> F([Gestion de clientes/proveedores])
+    C --> G([Alertas])
+    C --> H([Reportes])
+
+    D --> D1([Crear/Editar/Eliminar producto])
+    D1 --> D2([Actualizar stock minimo/actual])
+    D2 --> C
+
+    E --> E1([Seleccionar producto])
+    E1 --> E2([Tipo de movimiento: Entrada/Salida/Ajuste])
+    E2 --> E3([Actualizar stock])
+    E3 --> E4([Registrar movimiento])
+    E4 --> E5([Generar alerta si stock < minimo])
+    E5 --> C
+
+    F --> F1([Crear/Editar/Eliminar cliente/proveedor])
+    F1 --> C
+
+    G --> G1([Ver alertas])
+    G1 --> G2([Marcar resuelta])
+    G2 --> C
+
+    H --> H1([Generar reportes])
+    H1 --> H2([Exportar/Visualizar])
+    H2 --> C
+
+    AV1((Avatar 1)) -.-> C
+    AV2((Avatar 2)) -.-> E
+    AV3((Avatar 3)) -.-> G
+
+    classDef primary fill:#E6F4FF,stroke:#5B7DBB,stroke-width:1px,color:#0F1C2E;
+    classDef secondary fill:#FDE7EF,stroke:#D96D8C,stroke-width:1px,color:#4A1223;
+    classDef neutral fill:#EEF3F9,stroke:#7C8AA6,stroke-width:1px,color:#0F1C2E;
+    classDef accent fill:#D6F5E3,stroke:#3B8F6B,stroke-width:1px,color:#0F1C2E;
+    classDef avatar fill:#FFFFFF,stroke:#46B0D8,stroke-width:2px,color:#0F1C2E;
+
+    class A,B,C,D,E,F,G,H neutral;
+    class D1,D2,E1,E2,E3,E4,E5,F1,G1,G2,H1,H2 primary;
+    class G secondary;
+    class E accent;
+    class AV1,AV2,AV3 avatar;

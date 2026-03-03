@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Django backend",
+			"type": "shell",
+			"command": "C:/Users/000340182/OneDrive - UPB/Documents/SistemaInventarioV2/.venv/Scripts/python.exe",
+			"args": [
+				"backend/manage.py",
+				"runserver"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "Run Next.js frontend",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"Set-Location frontend; npm run dev"
+			],
+			"isBackground": true
+		}
+	]
+}
