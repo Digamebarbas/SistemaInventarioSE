@@ -209,5 +209,5 @@ Este proyecto es de uso interno para PYMEs y está provisto "tal cual" sin garan
 
 ---
 
-Desarrollado por: [Tu Nombre]  
+Desarrollado por: [Diego A Martinez - Mateo Ortiz]  
 Fecha: Febrero 2026
