@@ -197,6 +197,11 @@ SistemaInventarioV2/
 - Expandir reportes y gráficas usando bibliotecas de visualización (Chart.js, Recharts)
 - Notificaciones por email/SMS cuando se active una alerta
 - Autenticación con OAuth2 (Google, Microsoft)
+- Fecha de compra
+- Fecha de garantía
+- Stock Maximo
+- Unidades de Medidad (Segun Cliente)
+- Top 10 productos más vendidos por temporada (fecha)
 
 ## Licencia
 
