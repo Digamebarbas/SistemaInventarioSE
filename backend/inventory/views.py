@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
+from accounts.tenancy import get_request_company
 from config.permissions import CanCreateInventoryMovement, IsAdminOrReadOnly, is_platform_admin
 
 from .models import InventoryMovement, Product
@@ -14,14 +15,28 @@ from .serializers import InventoryMovementSerializer, ProductSerializer
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-	queryset = Product.objects.all().order_by("name")
+	queryset = Product.objects.select_related("company").all().order_by("name")
 	serializer_class = ProductSerializer
 	permission_classes = [IsAdminOrReadOnly]
 	filterset_fields = ["name", "sku", "barcode", "qr_code", "is_active"]
 	parser_classes = [MultiPartParser, FormParser]
 
+	def get_queryset(self):
+		company = get_request_company(self.request)
+		if not company:
+			return Product.objects.none()
+		return Product.objects.filter(company=company).order_by("name")
+
+	def perform_create(self, serializer):
+		company = get_request_company(self.request)
+		serializer.save(company=company)
+
 	@action(detail=False, methods=["post"], url_path="import_file")
 	def import_file(self, request):
+		company = get_request_company(request)
+		if not company:
+			return Response({"detail": "No se pudo resolver la empresa activa."}, status=status.HTTP_400_BAD_REQUEST)
+
 		file_obj = request.FILES.get("file")
 		if not file_obj:
 			return Response(
@@ -69,7 +84,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 				errors.append({"line": index, "error": "Campos obligatorios faltantes (name, sku)."})
 				continue
 
-			if Product.objects.filter(sku=sku).exists():
+			if Product.objects.filter(company=company, sku=sku).exists():
 				errors.append({"line": index, "error": f"El SKU '{sku}' ya existe."})
 				continue
 
@@ -94,6 +109,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 			try:
 				with transaction.atomic():
 					product = Product.objects.create(
+						company=company,
 						name=name,
 						sku=sku,
 						barcode=barcode,
@@ -106,6 +122,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 					if stock_actual > 0:
 						InventoryMovement.objects.create(
+							company=company,
 							product=product,
 							movement_type=InventoryMovement.TYPE_IN,
 							quantity=stock_actual,
@@ -134,6 +151,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class InventoryMovementViewSet(viewsets.ModelViewSet):
 	queryset = InventoryMovement.objects.select_related(
+		"company",
 		"product",
 		"supplier",
 		"customer",
@@ -151,12 +169,17 @@ class InventoryMovementViewSet(viewsets.ModelViewSet):
 	]
 
 	def get_queryset(self):
+		company = get_request_company(self.request)
+		if not company:
+			return InventoryMovement.objects.none()
+
 		qs = InventoryMovement.objects.select_related(
+			"company",
 			"product",
 			"supplier",
 			"customer",
 			"created_by",
-		)
+		).filter(company=company)
 		if is_platform_admin(self.request.user):
 			return qs
 		return qs.filter(created_by=self.request.user)

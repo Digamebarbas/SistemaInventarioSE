@@ -3,10 +3,11 @@ from django.db import models
 
 
 class Product(models.Model):
+	company = models.ForeignKey("accounts.Company", on_delete=models.CASCADE, related_name="products")
 	name = models.CharField(max_length=200)
-	sku = models.CharField(max_length=80, unique=True)
-	barcode = models.CharField(max_length=120, blank=True, unique=True)
-	qr_code = models.CharField(max_length=120, blank=True, unique=True)
+	sku = models.CharField(max_length=80)
+	barcode = models.CharField(max_length=120, blank=True)
+	qr_code = models.CharField(max_length=120, blank=True)
 	description = models.TextField(blank=True)
 	unit = models.CharField(max_length=40, default="unidad")
 	stock_minimo = models.IntegerField(default=0)
@@ -15,8 +16,23 @@ class Product(models.Model):
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=["company", "sku"], name="uniq_product_company_sku"),
+			models.UniqueConstraint(
+				fields=["company", "barcode"],
+				condition=~models.Q(barcode=""),
+				name="uniq_product_company_barcode",
+			),
+			models.UniqueConstraint(
+				fields=["company", "qr_code"],
+				condition=~models.Q(qr_code=""),
+				name="uniq_product_company_qr",
+			),
+		]
+
 	def __str__(self):
-		return f"{self.name} ({self.sku})"
+		return f"{self.name} ({self.sku}) - {self.company.slug}"
 
 
 class InventoryMovement(models.Model):
@@ -29,6 +45,7 @@ class InventoryMovement(models.Model):
 		(TYPE_ADJ, "Ajuste"),
 	]
 
+	company = models.ForeignKey("accounts.Company", on_delete=models.CASCADE, related_name="inventory_movements")
 	product = models.ForeignKey(Product, on_delete=models.CASCADE)
 	movement_type = models.CharField(max_length=3, choices=TYPE_CHOICES)
 	quantity = models.IntegerField()

@@ -3,10 +3,17 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from config.permissions import IsPlatformAdmin
 
-from .serializers import RegisterSerializer, UserManagementSerializer, UserSerializer
+from .models import Company
+from .serializers import (
+	CompanyTokenObtainPairSerializer,
+	RegisterSerializer,
+	UserManagementSerializer,
+	UserSerializer,
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -14,11 +21,23 @@ class RegisterView(generics.CreateAPIView):
 	serializer_class = RegisterSerializer
 
 
+class CompanyTokenObtainPairView(TokenObtainPairView):
+	serializer_class = CompanyTokenObtainPairSerializer
+
+
+class CompanyListPublicView(APIView):
+	permission_classes = [permissions.AllowAny]
+
+	def get(self, request):
+		companies = Company.objects.filter(is_active=True).values("id", "name", "slug").order_by("name")
+		return Response(list(companies))
+
+
 class MeView(APIView):
 	permission_classes = [permissions.IsAuthenticated]
 
 	def get(self, request):
-		return Response(UserSerializer(request.user).data)
+		return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 class UserManagementViewSet(viewsets.ModelViewSet):

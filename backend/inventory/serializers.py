@@ -1,16 +1,22 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from accounts.tenancy import get_request_company
 from alerts.utils import ensure_stock_alert
 
 from .models import InventoryMovement, Product
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    company_id = serializers.IntegerField(source="company.id", read_only=True)
+    company_name = serializers.CharField(source="company.name", read_only=True)
+
     class Meta:
         model = Product
         fields = [
             "id",
+            "company_id",
+            "company_name",
             "name",
             "sku",
             "barcode",
@@ -55,11 +61,25 @@ class InventoryMovementSerializer(serializers.ModelSerializer):
         read_only_fields = ["previous_stock", "new_stock", "created_by", "created_at"]
 
     def validate(self, attrs):
+        request = self.context.get("request")
+        company = get_request_company(request) if request else None
+        if not company:
+            raise serializers.ValidationError("No se pudo resolver la empresa activa.")
+
         product = attrs["product"]
         movement_type = attrs["movement_type"]
         quantity = attrs["quantity"]
         supplier = attrs.get("supplier")
         customer = attrs.get("customer")
+
+        if product.company_id != company.id:
+            raise serializers.ValidationError("El producto no pertenece a la empresa activa.")
+
+        if supplier and supplier.company_id != company.id:
+            raise serializers.ValidationError("El proveedor no pertenece a la empresa activa.")
+
+        if customer and customer.company_id != company.id:
+            raise serializers.ValidationError("El cliente no pertenece a la empresa activa.")
 
         if movement_type in [InventoryMovement.TYPE_IN, InventoryMovement.TYPE_OUT] and quantity <= 0:
             raise serializers.ValidationError("La cantidad debe ser mayor a cero.")
@@ -88,6 +108,7 @@ class InventoryMovementSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get("request")
         user = request.user if request else None
+        company = get_request_company(request) if request else None
         product = validated_data["product"]
         movement_type = validated_data["movement_type"]
         quantity = validated_data["quantity"]
@@ -108,6 +129,7 @@ class InventoryMovementSerializer(serializers.ModelSerializer):
             product.save(update_fields=["stock_actual", "updated_at"])
 
             movement = InventoryMovement.objects.create(
+                company=company,
                 product=product,
                 movement_type=movement_type,
                 quantity=quantity,

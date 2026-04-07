@@ -1,12 +1,20 @@
 from django.core.management.base import BaseCommand
 import csv
 from pathlib import Path
+from accounts.models import Company
 from inventory.models import Product
 from crm.models import Customer, Supplier
 
 
 class Command(BaseCommand):
     help = 'Cargar datos iniciales desde CSVs'
+
+    def get_default_company(self):
+        company, _ = Company.objects.get_or_create(
+            slug="all-technology",
+            defaults={"name": "All Technology", "is_active": True},
+        )
+        return company
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('\n' + '=' * 50))
@@ -15,20 +23,22 @@ class Command(BaseCommand):
 
         base_dir = Path(__file__).parent.parent.parent.parent / 'data'
         
+        company = self.get_default_company()
+
         # Load products
-        self.load_products(base_dir / 'productos_bodega.csv')
+        self.load_products(base_dir / 'productos_bodega.csv', company)
         
         # Load suppliers
-        self.load_suppliers(base_dir / 'proveedores.csv')
+        self.load_suppliers(base_dir / 'proveedores.csv', company)
         
         # Load customers
-        self.load_customers(base_dir / 'clientes.csv')
+        self.load_customers(base_dir / 'clientes.csv', company)
         
         self.stdout.write(self.style.SUCCESS('\n' + '=' * 50))
         self.stdout.write(self.style.SUCCESS('✓ Datos cargados exitosamente!'))
         self.stdout.write(self.style.SUCCESS('=' * 50 + '\n'))
 
-    def load_products(self, csv_path):
+    def load_products(self, csv_path, company):
         """Load products from CSV."""
         self.stdout.write(self.style.WARNING('\n📦 Loading Products...'))
         
@@ -46,6 +56,7 @@ class Command(BaseCommand):
                 qr_code = f"QR-{sku}"  # Generate unique QR code from SKU
                 
                 product, created = Product.objects.get_or_create(
+                    company=company,
                     sku=sku,
                     defaults={
                         'name': row['Nombre'],
@@ -65,7 +76,7 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS(f'✓ Loaded {loaded} new products, updated {updated}'))
 
-    def load_suppliers(self, csv_path):
+    def load_suppliers(self, csv_path, company):
         """Load suppliers from CSV."""
         self.stdout.write(self.style.WARNING('\n🏢 Loading Suppliers...'))
         
@@ -79,6 +90,7 @@ class Command(BaseCommand):
             reader = csv.DictReader(f)
             for row in reader:
                 supplier, created = Supplier.objects.get_or_create(
+                    company=company,
                     name=row['Nombre'],
                     defaults={
                         'email': row['Email'],
@@ -92,7 +104,7 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS(f'✓ Loaded {loaded} suppliers'))
 
-    def load_customers(self, csv_path):
+    def load_customers(self, csv_path, company):
         """Load customers from CSV."""
         self.stdout.write(self.style.WARNING('\n👤 Loading Customers...'))
         
@@ -106,6 +118,7 @@ class Command(BaseCommand):
             reader = csv.DictReader(f)
             for row in reader:
                 customer, created = Customer.objects.get_or_create(
+                    company=company,
                     name=row['Nombre'],
                     defaults={
                         'email': row['Email'],

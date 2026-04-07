@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.tenancy import get_request_company
 from config.permissions import is_platform_admin
 from inventory.models import InventoryMovement, Product
 
@@ -15,14 +16,28 @@ class DashboardMetrics(APIView):
 	def get(self, request):
 		today = timezone.now().date()
 		is_admin = is_platform_admin(request.user)
+		company = get_request_company(request)
+		if not company:
+			return Response(
+				{
+					"total_products": 0,
+					"total_stock": 0,
+					"critical_products": 0,
+					"movements_today": 0,
+					"is_admin": is_admin,
+					"top_products": [],
+					"monthly_movements": [],
+				}
+			)
 
-		total_products = Product.objects.count()
-		total_stock = Product.objects.aggregate(total=Sum("stock_actual"))["total"] or 0
-		critical_products = Product.objects.filter(
+		product_qs = Product.objects.filter(company=company)
+		total_products = product_qs.count()
+		total_stock = product_qs.aggregate(total=Sum("stock_actual"))["total"] or 0
+		critical_products = product_qs.filter(
 			stock_actual__lte=models.F("stock_minimo")
 		).count()
 
-		movement_qs = InventoryMovement.objects.all()
+		movement_qs = InventoryMovement.objects.filter(company=company)
 		if not is_admin:
 			movement_qs = movement_qs.filter(created_by=request.user)
 

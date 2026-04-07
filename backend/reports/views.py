@@ -3,6 +3,7 @@ from django.db.models import Count, Sum
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.tenancy import get_request_company
 from config.permissions import IsPlatformAdmin
 
 from inventory.models import InventoryMovement, Product
@@ -12,7 +13,8 @@ class CurrentStockReport(APIView):
 	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
-		products = Product.objects.values(
+		company = get_request_company(request)
+		products = Product.objects.filter(company=company).values(
 			"id",
 			"name",
 			"sku",
@@ -26,7 +28,9 @@ class LowStockReport(APIView):
 	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
+		company = get_request_company(request)
 		products = Product.objects.filter(
+			company=company,
 			stock_actual__lte=models.F("stock_minimo")
 		).values("id", "name", "sku", "stock_actual", "stock_minimo")
 		return Response(list(products))
@@ -38,8 +42,9 @@ class MovementRangeReport(APIView):
 	def get(self, request):
 		start = request.query_params.get("start")
 		end = request.query_params.get("end")
+		company = get_request_company(request)
 
-		qs = InventoryMovement.objects.select_related("product")
+		qs = InventoryMovement.objects.select_related("product").filter(company=company)
 		if start:
 			qs = qs.filter(created_at__date__gte=start)
 		if end:
@@ -60,7 +65,8 @@ class EntriesBySupplierReport(APIView):
 	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
-		qs = InventoryMovement.objects.filter(movement_type=InventoryMovement.TYPE_IN)
+		company = get_request_company(request)
+		qs = InventoryMovement.objects.filter(company=company, movement_type=InventoryMovement.TYPE_IN)
 		data = (
 			qs.values("supplier__id", "supplier__name")
 			.annotate(total=Sum("quantity"))
@@ -73,7 +79,8 @@ class ExitsByCustomerReport(APIView):
 	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
-		qs = InventoryMovement.objects.filter(movement_type=InventoryMovement.TYPE_OUT)
+		company = get_request_company(request)
+		qs = InventoryMovement.objects.filter(company=company, movement_type=InventoryMovement.TYPE_OUT)
 		data = (
 			qs.values("customer__id", "customer__name")
 			.annotate(total=Sum("quantity"))
@@ -86,7 +93,8 @@ class TopProductsReport(APIView):
 	permission_classes = [IsPlatformAdmin]
 
 	def get(self, request):
-		qs = InventoryMovement.objects.filter(movement_type=InventoryMovement.TYPE_OUT)
+		company = get_request_company(request)
+		qs = InventoryMovement.objects.filter(company=company, movement_type=InventoryMovement.TYPE_OUT)
 		data = (
 			qs.values("product__id", "product__name", "product__sku")
 			.annotate(total=Sum("quantity"), movements=Count("id"))

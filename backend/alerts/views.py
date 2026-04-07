@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from accounts.tenancy import get_request_company
 from config.permissions import IsPlatformAdmin
 
 from .models import Alert
@@ -15,6 +16,12 @@ class AlertViewSet(viewsets.ModelViewSet):
 	serializer_class = AlertSerializer
 	permission_classes = [IsAuthenticated]
 	http_method_names = ["get", "patch", "head", "options"]
+
+	def get_queryset(self):
+		company = get_request_company(self.request)
+		if not company:
+			return Alert.objects.none()
+		return Alert.objects.select_related("product").filter(product__company=company)
 
 	@action(detail=True, methods=["patch"])
 	def resolve(self, request, pk=None):

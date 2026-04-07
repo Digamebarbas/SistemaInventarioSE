@@ -20,8 +20,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 django.setup()
 
 from django.contrib.auth.models import User, Group
+from accounts.models import Company
 from inventory.models import Product
 from crm.models import Customer, Supplier
+
+
+def get_default_company():
+    company, _ = Company.objects.get_or_create(
+        slug="all-technology",
+        defaults={"name": "All Technology", "is_active": True},
+    )
+    return company
 
 def get_admin_user():
     """Get or create admin user for authentication."""
@@ -39,7 +48,7 @@ def get_admin_user():
         print("✓ Admin user created")
     return admin_user
 
-def load_products(csv_path):
+def load_products(csv_path, company):
     """Load products from CSV."""
     print("\n📦 Loading Products...")
     loaded = 0
@@ -48,6 +57,7 @@ def load_products(csv_path):
         reader = csv.DictReader(f)
         for row in reader:
             product, created = Product.objects.get_or_create(
+                company=company,
                 sku=row['SKU'],
                 defaults={
                     'name': row['Nombre'],
@@ -65,7 +75,7 @@ def load_products(csv_path):
     
     print(f"✓ Loaded {loaded} products")
 
-def load_suppliers(csv_path):
+def load_suppliers(csv_path, company):
     """Load suppliers from CSV."""
     print("\n🏢 Loading Suppliers...")
     loaded = 0
@@ -74,12 +84,13 @@ def load_suppliers(csv_path):
         reader = csv.DictReader(f)
         for row in reader:
             supplier, created = Supplier.objects.get_or_create(
+                company=company,
                 name=row['Nombre'],
                 defaults={
                     'email': row['Email'],
                     'phone': row['Telefono'],
                     'address': row['Direccion'],
-                    'nit': row['NIT'],
+                    'tax_id': row['NIT'],
                 }
             )
             if created:
@@ -87,7 +98,7 @@ def load_suppliers(csv_path):
     
     print(f"✓ Loaded {loaded} suppliers")
 
-def load_customers(csv_path):
+def load_customers(csv_path, company):
     """Load customers from CSV."""
     print("\n👤 Loading Customers...")
     loaded = 0
@@ -96,12 +107,13 @@ def load_customers(csv_path):
         reader = csv.DictReader(f)
         for row in reader:
             customer, created = Customer.objects.get_or_create(
+                company=company,
                 name=row['Nombre'],
                 defaults={
                     'email': row['Email'],
                     'phone': row['Telefono'],
                     'address': row['Direccion'],
-                    'nit_cedula': row['NIT_Cedula'],
+                    'tax_id': row['NIT_Cedula'],
                 }
             )
             if created:
@@ -117,6 +129,7 @@ def main():
     
     # Ensure admin user exists
     get_admin_user()
+    company = get_default_company()
     
     # Get paths
     base_dir = Path(__file__).parent
@@ -127,17 +140,17 @@ def main():
     # Load data
     try:
         if products_csv.exists():
-            load_products(products_csv)
+            load_products(products_csv, company)
         else:
             print(f"⚠ Products CSV not found: {products_csv}")
         
         if suppliers_csv.exists():
-            load_suppliers(suppliers_csv)
+            load_suppliers(suppliers_csv, company)
         else:
             print(f"⚠ Suppliers CSV not found: {suppliers_csv}")
         
         if customers_csv.exists():
-            load_customers(customers_csv)
+            load_customers(customers_csv, company)
         else:
             print(f"⚠ Customers CSV not found: {customers_csv}")
         
