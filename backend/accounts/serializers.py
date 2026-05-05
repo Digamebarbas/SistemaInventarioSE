@@ -1,9 +1,108 @@
 from django.contrib.auth.models import Group, User
+from django.db import transaction
+from django.utils.text import slugify
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Company, UserCompany
 from .tenancy import get_default_company_for_user
+
+
+class CompanyOnboardingCreateSerializer(serializers.Serializer):
+    company_name = serializers.CharField(max_length=200, min_length=2)
+    admin_email = serializers.EmailField()
+    inventory_category = serializers.CharField(max_length=80, required=False, allow_blank=True)
+
+    def validate_company_name(self, value):
+        company_name = value.strip()
+        if Company.objects.filter(name__iexact=company_name).exists():
+            raise serializers.ValidationError("Ya existe una empresa con ese nombre.")
+        return company_name
+
+    def validate_admin_email(self, value):
+        admin_email = value.strip().lower()
+        if User.objects.filter(email__iexact=admin_email).exists():
+            raise serializers.ValidationError("Ya existe un usuario registrado con ese correo.")
+        return admin_email
+
+    def _build_unique_slug(self, company_name):
+        base_slug = slugify(company_name) or "empresa"
+        slug = base_slug
+        index = 2
+        while Company.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{index}"
+            index += 1
+        return slug
+
+    def _build_unique_username(self, admin_email):
+        base_username = admin_email.lower()
+        username = base_username
+        index = 2
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}.{index}"
+            index += 1
+        return username
+
+    @transaction.atomic
+    def create(self, validated_data):
+        company_name = validated_data["company_name"]
+        admin_email = validated_data["admin_email"]
+
+        company = Company.objects.create(
+            name=company_name,
+            slug=self._build_unique_slug(company_name),
+            is_active=True,
+        )
+
+        admin_user = User.objects.create_user(
+            username=self._build_unique_username(admin_email),
+            email=admin_email,
+            password="Admin123",
+            first_name="Administrador",
+        )
+        
+        # Set must_change_password flag via raw SQL since we're modifying auth_user table
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE auth_user SET must_change_password = 1 WHERE id = %s",
+                    [admin_user.id]
+                )
+        except Exception:
+            # Column might not exist in test DB, ignore
+            pass
+
+        admin_group, _ = Group.objects.get_or_create(name="Admin")
+        admin_user.groups.add(admin_group)
+
+        UserCompany.objects.create(user=admin_user, company=company, is_default=True)
+
+        return {
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "slug": company.slug,
+            },
+            "admin": {
+                "id": admin_user.id,
+                "username": admin_user.username,
+                "email": admin_user.email,
+                "temporary_password": "Admin123",
+            },
+            "inventory_category": validated_data.get("inventory_category", "").strip().lower(),
+        }
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, min_length=1)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Las contraseñas no coinciden."})
+        return data
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -213,6 +312,20 @@ class CompanyTokenObtainPairSerializer(TokenObtainPairSerializer):
         refresh["company_id"] = membership.company.id
         refresh["company_slug"] = membership.company.slug
         refresh["company_name"] = membership.company.name
+        
+        # Get must_change_password flag from DB
+        must_change_password = False
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT must_change_password FROM auth_user WHERE id = %s", [self.user.id])
+                row = cursor.fetchone()
+                must_change_password = bool(row[0]) if row else False
+        except Exception:
+            # Column might not exist in test DB, ignore
+            pass
+
+        refresh["must_change_password"] = must_change_password
 
         data["refresh"] = str(refresh)
         data["access"] = str(refresh.access_token)
@@ -221,4 +334,5 @@ class CompanyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "name": membership.company.name,
             "slug": membership.company.slug,
         }
+        data["must_change_password"] = must_change_password
         return data

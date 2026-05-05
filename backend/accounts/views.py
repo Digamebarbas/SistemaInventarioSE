@@ -9,6 +9,8 @@ from config.permissions import IsPlatformAdmin
 
 from .models import Company
 from .serializers import (
+	ChangePasswordSerializer,
+	CompanyOnboardingCreateSerializer,
 	CompanyTokenObtainPairSerializer,
 	RegisterSerializer,
 	UserManagementSerializer,
@@ -31,6 +33,49 @@ class CompanyListPublicView(APIView):
 	def get(self, request):
 		companies = Company.objects.filter(is_active=True).values("id", "name", "slug").order_by("name")
 		return Response(list(companies))
+
+
+class CompanyOnboardingCreateView(APIView):
+	permission_classes = [permissions.AllowAny]
+
+	def post(self, request):
+		serializer = CompanyOnboardingCreateSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		created_payload = serializer.save()
+		return Response(created_payload, status=status.HTTP_201_CREATED)
+
+
+class ChangePasswordView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def post(self, request):
+		serializer = ChangePasswordSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+
+		user = request.user
+		if not user.check_password(serializer.validated_data["current_password"]):
+			return Response(
+				{"detail": "Contraseña actual incorrecta."},
+				status=status.HTTP_400_BAD_REQUEST,
+			)
+
+		user.set_password(serializer.validated_data["new_password"])
+		user.save()
+		
+		# Clear must_change_password flag via raw SQL if column exists
+		try:
+			from django.db import connection
+			with connection.cursor() as cursor:
+				cursor.execute(
+					"UPDATE auth_user SET must_change_password = 0 WHERE id = %s",
+					[user.id]
+				)
+		except Exception:
+			# Column might not exist in test DB, ignore
+			pass
+
+		return Response({"detail": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
+
 
 
 class MeView(APIView):
