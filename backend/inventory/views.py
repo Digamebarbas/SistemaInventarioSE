@@ -95,12 +95,19 @@ class ProductViewSet(viewsets.ModelViewSet):
 				errors.append({"line": index, "error": "stock_minimo y stock_actual deben ser números enteros."})
 				continue
 
-			if stock_actual < 0 or stock_minimo < 0:
-				errors.append({"line": index, "error": "stock_minimo y stock_actual no pueden ser negativos."})
-				continue
-
 			barcode = row.get("barcode", "")
 			qr_code = row.get("qr_code", "")
+
+			fecha_vencimiento_raw = row.get("fecha_vencimiento", "").strip()
+			fecha_vencimiento = None
+			if fecha_vencimiento_raw:
+				from datetime import datetime
+				try:
+					fecha_vencimiento = datetime.strptime(fecha_vencimiento_raw, "%Y-%m-%d").date()
+				except ValueError:
+					errors.append({"line": index, "error": f"fecha_vencimiento inválida '{fecha_vencimiento_raw}'. Use formato YYYY-MM-DD."})
+					continue
+
 			if not barcode:
 				barcode = f"IMP-BAR-{sku}"
 			if not qr_code:
@@ -118,6 +125,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 						unit=row.get("unit", "unidad") or "unidad",
 						stock_minimo=stock_minimo,
 						stock_actual=0,
+						fecha_vencimiento=fecha_vencimiento,
 					)
 
 					if stock_actual > 0:

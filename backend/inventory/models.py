@@ -12,6 +12,7 @@ class Product(models.Model):
 	unit = models.CharField(max_length=40, default="unidad")
 	stock_minimo = models.IntegerField(default=0)
 	stock_actual = models.IntegerField(default=0)
+	fecha_vencimiento = models.DateField(null=True, blank=True)
 	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)

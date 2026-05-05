@@ -25,6 +25,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "unit",
             "stock_minimo",
             "stock_actual",
+            "fecha_vencimiento",
             "is_active",
             "created_at",
             "updated_at",
