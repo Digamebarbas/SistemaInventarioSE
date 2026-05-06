@@ -18,14 +18,14 @@ class ProductViewSet(viewsets.ModelViewSet):
 	queryset = Product.objects.select_related("company").all().order_by("name")
 	serializer_class = ProductSerializer
 	permission_classes = [IsAdminOrReadOnly]
-	filterset_fields = ["name", "sku", "barcode", "qr_code", "is_active"]
+	filterset_fields = ["name", "category", "sku", "barcode", "qr_code", "is_active"]
 	parser_classes = [MultiPartParser, FormParser]
 
 	def get_queryset(self):
 		company = get_request_company(self.request)
 		if not company:
 			return Product.objects.none()
-		return Product.objects.filter(company=company).order_by("name")
+		return Product.objects.select_related("company").filter(company=company).order_by("name")
 
 	def perform_create(self, serializer):
 		company = get_request_company(self.request)
@@ -118,6 +118,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 					product = Product.objects.create(
 						company=company,
 						name=name,
+						category=row.get("category", "otros") or "otros",
 						sku=sku,
 						barcode=barcode,
 						qr_code=qr_code,

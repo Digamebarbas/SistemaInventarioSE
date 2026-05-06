@@ -18,6 +18,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "company_id",
             "company_name",
             "name",
+            "category",
             "sku",
             "barcode",
             "qr_code",

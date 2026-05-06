@@ -165,12 +165,14 @@ SistemaInventarioV2/
 
 ### Backend (Render, Railway, etc.)
 
-1. Crear servicio PostgreSQL en tu plataforma de despliegue
+1. Crear proyecto en Supabase (PostgreSQL)
 2. Configurar las variables de entorno en el panel de tu servicio:
    - `DJANGO_SECRET_KEY`
    - `DJANGO_DEBUG=False`
    - `DJANGO_ALLOWED_HOSTS=tu-dominio.onrender.com`
-   - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`
+   - `DATABASE_URL=postgresql://...` (cadena de conexión de Supabase)
+   - `DB_SSL_REQUIRE=True`
+   - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT` (opcionales)
    - `CORS_ALLOWED_ORIGINS=https://tu-frontend.vercel.app`
    - `CSRF_TRUSTED_ORIGINS=https://tu-frontend.vercel.app`
 3. Desplegar el código del directorio `backend/`

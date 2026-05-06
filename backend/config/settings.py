@@ -14,8 +14,14 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load backend/.env if present for local and preview environments.
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -94,7 +100,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-if os.getenv("POSTGRES_DB"):
+database_url = os.getenv("DATABASE_URL")
+
+if database_url:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            database_url,
+            conn_max_age=600,
+            ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() == "true",
+        )
+    }
+elif os.getenv("POSTGRES_DB"):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',

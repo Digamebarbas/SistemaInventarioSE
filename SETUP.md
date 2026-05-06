@@ -41,10 +41,16 @@ pip install -r backend/requirements.txt
 Copiar `backend/.env.example` a `backend/.env` y configurar si es necesario:
 
 ```env
-SECRET_KEY=tu-clave-secreta-aqui
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-DATABASE_URL=sqlite:///db.sqlite3
+DJANGO_SECRET_KEY=tu-clave-secreta-aqui
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Opcion 1: SQLite local
+# DATABASE_URL=sqlite:///db.sqlite3
+
+# Opcion 2: Supabase (recomendado para pruebas de nube)
+DATABASE_URL=postgresql://postgres:password@db.xxxxxxxxxxxxx.supabase.co:5432/postgres
+DB_SSL_REQUIRE=True
 ```
 
 #### 1.4 Aplicar migraciones

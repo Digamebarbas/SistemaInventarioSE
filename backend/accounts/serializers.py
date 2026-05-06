@@ -228,6 +228,20 @@ class UserManagementSerializer(serializers.ModelSerializer):
     def get_roles(self, obj):
         return list(obj.groups.values_list("name", flat=True))
 
+    def _resolve_creator_company(self):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return None
+
+        token = getattr(request, "auth", None)
+        company_id = token.get("company_id") if isinstance(token, dict) else None
+        if company_id:
+            company = Company.objects.filter(id=company_id, is_active=True).first()
+            if company:
+                return company
+
+        return get_default_company_for_user(request.user)
+
     def create(self, validated_data):
         role = validated_data.pop("role", "Usuario")
         password = validated_data.pop("password", None)
@@ -247,6 +261,14 @@ class UserManagementSerializer(serializers.ModelSerializer):
                     user=user,
                     company=company,
                     defaults={"is_default": index == 0},
+                )
+        else:
+            creator_company = self._resolve_creator_company()
+            if creator_company:
+                UserCompany.objects.get_or_create(
+                    user=user,
+                    company=creator_company,
+                    defaults={"is_default": True},
                 )
         return user
 

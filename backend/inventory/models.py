@@ -5,6 +5,7 @@ from django.db import models
 class Product(models.Model):
 	company = models.ForeignKey("accounts.Company", on_delete=models.CASCADE, related_name="products")
 	name = models.CharField(max_length=200)
+	category = models.CharField(max_length=60, default="otros")
 	sku = models.CharField(max_length=80)
 	barcode = models.CharField(max_length=120, blank=True)
 	qr_code = models.CharField(max_length=120, blank=True)

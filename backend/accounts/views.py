@@ -16,6 +16,7 @@ from .serializers import (
 	UserManagementSerializer,
 	UserSerializer,
 )
+from .tenancy import get_request_company
 
 
 class RegisterView(generics.CreateAPIView):
@@ -86,9 +87,19 @@ class MeView(APIView):
 
 
 class UserManagementViewSet(viewsets.ModelViewSet):
-	queryset = User.objects.all().order_by("username")
 	serializer_class = UserManagementSerializer
 	permission_classes = [IsPlatformAdmin]
+
+	def get_queryset(self):
+		company = get_request_company(self.request)
+		if not company:
+			return User.objects.none()
+
+		return (
+			User.objects.filter(company_memberships__company=company)
+			.distinct()
+			.order_by("username")
+		)
 
 	def destroy(self, request, *args, **kwargs):
 		instance = self.get_object()
@@ -110,12 +121,13 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
 	@action(detail=False, methods=["get"])
 	def summary(self, request):
+		queryset = self.get_queryset()
 		return Response(
 			{
-				"total": User.objects.count(),
-				"active": User.objects.filter(is_active=True).count(),
-				"admins": User.objects.filter(groups__name="Admin").distinct().count(),
-				"usuarios": User.objects.filter(groups__name="Usuario").distinct().count(),
+				"total": queryset.count(),
+				"active": queryset.filter(is_active=True).count(),
+				"admins": queryset.filter(groups__name="Admin").distinct().count(),
+				"usuarios": queryset.filter(groups__name="Usuario").distinct().count(),
 			}
 		)
 
