@@ -1,0 +1,202 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark .bg-white {
+  background-color: #1e293b;
+}
+
+.dark .bg-slate-50 {
+  background-color: #0f172a;
+}
+
+.dark .bg-slate-100 {
+  background-color: #0b1220;
+}
+
+.dark .bg-slate-200 {
+  background-color: #1e293b;
+}
+
+.dark .bg-slate-900 {
+  background-color: #020617;
+}
+
+.dark .text-slate-900 {
+  color: #e2e8f0;
+}
+
+.dark .text-slate-800 {
+  color: #cbd5e1;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1;
+}
+
+.dark .text-slate-600 {
+  color: #94a3b8;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
+.dark .text-slate-400 {
+  color: #94a3b8;
+}
+
+.dark .border-slate-200 {
+  border-color: #334155;
+}
+
+.dark .border-slate-300 {
+  border-color: #475569;
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b;
+}
+
+.dark .text-gray-900 {
+  color: #e2e8f0;
+}
+
+.dark .text-gray-800 {
+  color: #cbd5e1;
+}
+
+.dark .text-gray-700 {
+  color: #cbd5e1;
+}
+
+.dark .text-gray-600 {
+  color: #94a3b8;
+}
+
+.dark .text-gray-500 {
+  color: #94a3b8;
+}
+
+.dark .bg-gray-100 {
+  background-color: #1e293b;
+}
+
+.dark .border-gray-200 {
+  border-color: #334155;
+}
+
+.dark .border-gray-300 {
+  border-color: #475569;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b;
+}
+
+.dark .hover\:bg-cyan-50:hover {
+  background-color: #0b2233;
+}
+
+.dark .hover\:text-slate-900:hover {
+  color: #f1f5f9;
+}
+
+.dark .from-slate-50 {
+  --tw-gradient-from: #0f172a var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(15 23 42 / 0) var(--tw-gradient-to-position);
+}
+
+.dark .to-slate-100\/50 {
+  --tw-gradient-to: rgb(30 41 59 / 0.5) var(--tw-gradient-to-position);
+}
+
+.dark .hover\:from-slate-100:hover {
+  --tw-gradient-from: #1e293b var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(30 41 59 / 0) var(--tw-gradient-to-position);
+}
+
+.dark .hover\:to-slate-100:hover {
+  --tw-gradient-to: #1e293b var(--tw-gradient-to-position);
+}
+
+.dark .from-cyan-50 {
+  --tw-gradient-from: #0b2233 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(11 34 51 / 0) var(--tw-gradient-to-position);
+}
+
+.dark .to-cyan-50 {
+  --tw-gradient-to: #0b2233 var(--tw-gradient-to-position);
+}
+
+.dark .via-slate-100 {
+  --tw-gradient-stops: var(--tw-gradient-from), #0f172a var(--tw-gradient-via-position), var(--tw-gradient-to);
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8;
+}
+
+.dark .placeholder\:text-gray-500::placeholder,
+.dark .placeholder\:text-slate-400::placeholder {
+  color: #94a3b8;
+}
+
+.dark .overflow-x-auto.rounded-xl.border.border-slate-200.bg-white.shadow-sm,
+.dark .rounded-xl.border.border-slate-200.bg-white.shadow-sm {
+  background: #1e2d47;
+  border-color: #314a70;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45);
+}
+
+.dark table {
+  color: #f1f5f9;
+}
+
+.dark table thead {
+  background: #0b1528;
+}
+
+.dark table th {
+  color: #f8fafc;
+}
+
+.dark table tbody tr {
+  border-color: #2b3f5f;
+}
+
+.dark table tbody tr:hover {
+  background: #273a58;
+}
