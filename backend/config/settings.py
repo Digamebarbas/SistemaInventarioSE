@@ -201,10 +201,12 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://localhost(:\d+)?$",
     r"^https?://127\.0\.0\.1(:\d+)?$",
+    r"^https://.*\.vercel\.app$",
+    r"^https://sistemainventariose\.onrender\.com$",
 ]
 if not DEBUG:
     CORS_ALLOWED_ORIGINS.extend([
-        "https://*.vercel.app",
+        "https://sistemainventariose.vercel.app",
     ])
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
