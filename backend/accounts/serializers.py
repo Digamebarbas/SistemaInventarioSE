@@ -12,6 +12,7 @@ class CompanyOnboardingCreateSerializer(serializers.Serializer):
     company_name = serializers.CharField(max_length=200, min_length=2)
     admin_email = serializers.EmailField()
     inventory_category = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    uses_warranty_period = serializers.BooleanField(required=False, default=False)
 
     def validate_company_name(self, value):
         company_name = value.strip()
@@ -51,6 +52,7 @@ class CompanyOnboardingCreateSerializer(serializers.Serializer):
         company = Company.objects.create(
             name=company_name,
             slug=self._build_unique_slug(company_name),
+            uses_warranty_period=validated_data.get("uses_warranty_period", False),
             is_active=True,
         )
 
@@ -83,6 +85,7 @@ class CompanyOnboardingCreateSerializer(serializers.Serializer):
                 "id": company.id,
                 "name": company.name,
                 "slug": company.slug,
+                "uses_warranty_period": company.uses_warranty_period,
             },
             "admin": {
                 "id": admin_user.id,
@@ -171,6 +174,7 @@ class UserSerializer(serializers.ModelSerializer):
                     "id": membership.company.id,
                     "name": membership.company.name,
                     "slug": membership.company.slug,
+                    "uses_warranty_period": membership.company.uses_warranty_period,
                 }
 
         default_company = get_default_company_for_user(obj)
@@ -180,6 +184,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id": default_company.id,
             "name": default_company.name,
             "slug": default_company.slug,
+            "uses_warranty_period": default_company.uses_warranty_period,
         }
 
     def get_companies(self, obj):
@@ -193,6 +198,7 @@ class UserSerializer(serializers.ModelSerializer):
                 "id": membership.company.id,
                 "name": membership.company.name,
                 "slug": membership.company.slug,
+                "uses_warranty_period": membership.company.uses_warranty_period,
                 "is_default": membership.is_default,
             }
             for membership in memberships

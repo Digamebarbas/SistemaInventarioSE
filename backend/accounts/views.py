@@ -32,7 +32,12 @@ class CompanyListPublicView(APIView):
 	permission_classes = [permissions.AllowAny]
 
 	def get(self, request):
-		companies = Company.objects.filter(is_active=True).values("id", "name", "slug").order_by("name")
+		companies = Company.objects.filter(is_active=True).values(
+			"id",
+			"name",
+			"slug",
+			"uses_warranty_period",
+		).order_by("name")
 		return Response(list(companies))
 
 

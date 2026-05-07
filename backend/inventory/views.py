@@ -90,9 +90,18 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 			try:
 				stock_minimo = int(row.get("stock_minimo", "0") or 0)
+				stock_maximo = int(row.get("stock_maximo", "0") or 0)
 				stock_actual = int(row.get("stock_actual", "0") or 0)
 			except ValueError:
-				errors.append({"line": index, "error": "stock_minimo y stock_actual deben ser números enteros."})
+				errors.append({"line": index, "error": "stock_minimo, stock_maximo y stock_actual deben ser numeros enteros."})
+				continue
+
+			if stock_maximo < 0:
+				errors.append({"line": index, "error": "stock_maximo no puede ser negativo."})
+				continue
+
+			if stock_maximo and stock_maximo < stock_minimo:
+				errors.append({"line": index, "error": "stock_maximo debe ser mayor o igual al stock_minimo."})
 				continue
 
 			barcode = row.get("barcode", "")
@@ -100,12 +109,36 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 			fecha_vencimiento_raw = row.get("fecha_vencimiento", "").strip()
 			fecha_vencimiento = None
-			if fecha_vencimiento_raw:
+			if fecha_vencimiento_raw and not company.uses_warranty_period:
 				from datetime import datetime
 				try:
 					fecha_vencimiento = datetime.strptime(fecha_vencimiento_raw, "%Y-%m-%d").date()
 				except ValueError:
 					errors.append({"line": index, "error": f"fecha_vencimiento inválida '{fecha_vencimiento_raw}'. Use formato YYYY-MM-DD."})
+					continue
+
+			periodo_garantia_raw = row.get("periodo_garantia_meses", "").strip()
+			periodo_garantia_meses = None
+			if periodo_garantia_raw and company.uses_warranty_period:
+				try:
+					periodo_garantia_meses = int(periodo_garantia_raw)
+				except ValueError:
+					errors.append({"line": index, "error": f"periodo_garantia_meses inválido '{periodo_garantia_raw}'."})
+					continue
+
+			if not company.uses_warranty_period:
+				periodo_garantia_meses = None
+			else:
+				fecha_vencimiento = None
+
+			fecha_compra_raw = row.get("fecha_compra", "").strip()
+			fecha_compra = None
+			if fecha_compra_raw:
+				from datetime import datetime
+				try:
+					fecha_compra = datetime.strptime(fecha_compra_raw, "%Y-%m-%d").date()
+				except ValueError:
+					errors.append({"line": index, "error": f"fecha_compra inválida '{fecha_compra_raw}'. Use formato YYYY-MM-DD."})
 					continue
 
 			if not barcode:
@@ -125,8 +158,11 @@ class ProductViewSet(viewsets.ModelViewSet):
 						description=row.get("description", ""),
 						unit=row.get("unit", "unidad") or "unidad",
 						stock_minimo=stock_minimo,
+						stock_maximo=stock_maximo,
 						stock_actual=0,
+						fecha_compra=fecha_compra,
 						fecha_vencimiento=fecha_vencimiento,
+						periodo_garantia_meses=periodo_garantia_meses,
 					)
 
 					if stock_actual > 0:

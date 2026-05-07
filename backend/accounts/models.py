@@ -5,6 +5,7 @@ from django.db import models
 class Company(models.Model):
 	name = models.CharField(max_length=200, unique=True)
 	slug = models.SlugField(max_length=80, unique=True)
+	uses_warranty_period = models.BooleanField(default=False)
 	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 

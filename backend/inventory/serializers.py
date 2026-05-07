@@ -10,6 +10,7 @@ from .models import InventoryMovement, Product
 class ProductSerializer(serializers.ModelSerializer):
     company_id = serializers.IntegerField(source="company.id", read_only=True)
     company_name = serializers.CharField(source="company.name", read_only=True)
+    uses_warranty_period = serializers.BooleanField(source="company.uses_warranty_period", read_only=True)
 
     class Meta:
         model = Product
@@ -25,12 +26,54 @@ class ProductSerializer(serializers.ModelSerializer):
             "description",
             "unit",
             "stock_minimo",
+            "stock_maximo",
             "stock_actual",
+            "fecha_compra",
             "fecha_vencimiento",
+            "periodo_garantia_meses",
+            "uses_warranty_period",
             "is_active",
             "created_at",
             "updated_at",
         ]
+
+    def validate(self, attrs):
+        company = None
+        if self.instance:
+            company = self.instance.company
+
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            request_company = get_request_company(request)
+            if request_company:
+                company = request_company
+
+        if not company:
+            return attrs
+
+        fecha_vencimiento = attrs.get("fecha_vencimiento", getattr(self.instance, "fecha_vencimiento", None))
+        periodo_garantia_meses = attrs.get("periodo_garantia_meses", getattr(self.instance, "periodo_garantia_meses", None))
+        stock_minimo = attrs.get("stock_minimo", getattr(self.instance, "stock_minimo", 0))
+        stock_maximo = attrs.get("stock_maximo", getattr(self.instance, "stock_maximo", 0))
+
+        if stock_maximo < 0:
+            raise serializers.ValidationError({"stock_maximo": "El stock maximo no puede ser negativo."})
+
+        if stock_maximo and stock_maximo < stock_minimo:
+            raise serializers.ValidationError({"stock_maximo": "El stock maximo debe ser mayor o igual al stock minimo."})
+
+        if company.uses_warranty_period:
+            if fecha_vencimiento:
+                raise serializers.ValidationError(
+                    {"fecha_vencimiento": "Esta empresa maneja garantias; no debe registrar fecha de vencimiento."}
+                )
+        else:
+            if periodo_garantia_meses:
+                raise serializers.ValidationError(
+                    {"periodo_garantia_meses": "Esta empresa maneja vencimientos; no debe registrar periodo de garantia."}
+                )
+
+        return attrs
 
 
 class InventoryMovementSerializer(serializers.ModelSerializer):

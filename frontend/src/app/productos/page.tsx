@@ -18,8 +18,12 @@ interface Product {
   description: string;
   stock_actual: number;
   stock_minimo: number;
+  stock_maximo: number;
   unit: string;
+  fecha_compra: string | null;
   fecha_vencimiento: string | null;
+  periodo_garantia_meses: number | null;
+  uses_warranty_period: boolean;
   is_active: boolean;
 }
 
@@ -79,7 +83,7 @@ const capitalizeFirst = (value: string) => {
 type CachedMe = {
   is_admin?: boolean;
   roles?: string[];
-  company?: { slug?: string };
+  company?: { slug?: string; uses_warranty_period?: boolean };
 };
 
 const readCachedMe = (): CachedMe => {
@@ -109,8 +113,11 @@ const createEmptyFormData = () => ({
   description: "",
   unit: "unidad",
   stock_minimo: 10,
+  stock_maximo: 0,
   stock_actual: 0,
+  fecha_compra: "",
   fecha_vencimiento: "",
+  periodo_garantia_meses: "",
 });
 
 export default function ProductosPage() {
@@ -120,6 +127,7 @@ export default function ProductosPage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [isAdmin, setIsAdmin] = useState(isAdminFromCachedMe(cachedMe));
+  const [usesWarrantyPeriod, setUsesWarrantyPeriod] = useState(Boolean(cachedMe.company?.uses_warranty_period));
   const [currentCompanySlug, setCurrentCompanySlug] = useState(cachedMe.company?.slug || "global");
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [searchCode, setSearchCode] = useState("");
@@ -174,7 +182,7 @@ export default function ProductosPage() {
     if (cachedMe.company?.slug) {
       setCurrentCompanySlug(cachedMe.company.slug);
       setIsAdmin(isAdminFromCachedMe(cachedMe));
-      return;
+      setUsesWarrantyPeriod(Boolean(cachedMe.company.uses_warranty_period));
     }
 
     try {
@@ -182,13 +190,18 @@ export default function ProductosPage() {
       const nextCachedMe = {
         is_admin: Boolean(res.data?.is_admin),
         roles: Array.isArray(res.data?.roles) ? res.data.roles : [],
-        company: { slug: String(res.data?.company?.slug || "global") },
+        company: {
+          slug: String(res.data?.company?.slug || "global"),
+          uses_warranty_period: Boolean(res.data?.company?.uses_warranty_period),
+        },
       };
       setCurrentCompanySlug(nextCachedMe.company.slug || "global");
       setIsAdmin(isAdminFromCachedMe(nextCachedMe));
+      setUsesWarrantyPeriod(Boolean(nextCachedMe.company.uses_warranty_period));
     } catch {
       setCurrentCompanySlug("global");
       setIsAdmin(false);
+      setUsesWarrantyPeriod(false);
     }
   };
 
@@ -218,8 +231,11 @@ export default function ProductosPage() {
       description: product.description || "",
       unit: product.unit || "unidad",
       stock_minimo: product.stock_minimo,
+      stock_maximo: product.stock_maximo,
       stock_actual: product.stock_actual,
+      fecha_compra: product.fecha_compra || "",
       fecha_vencimiento: product.fecha_vencimiento || "",
+      periodo_garantia_meses: product.periodo_garantia_meses ? String(product.periodo_garantia_meses) : "",
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -287,6 +303,10 @@ export default function ProductosPage() {
     e.preventDefault();
     try {
       if (editingProductId) {
+        if (formData.stock_maximo && formData.stock_maximo < formData.stock_minimo) {
+          error("El stock maximo debe ser mayor o igual al stock minimo");
+          return;
+        }
         await apiClient.patch(`/inventory/products/${editingProductId}/`, {
           name: formData.name,
           category: formData.category,
@@ -296,11 +316,27 @@ export default function ProductosPage() {
           description: formData.description,
           unit: formData.unit,
           stock_minimo: formData.stock_minimo,
-          fecha_vencimiento: formData.fecha_vencimiento || null,
+          stock_maximo: formData.stock_maximo,
+          fecha_compra: formData.fecha_compra || null,
+          fecha_vencimiento: usesWarrantyPeriod ? null : (formData.fecha_vencimiento || null),
+          periodo_garantia_meses: usesWarrantyPeriod
+            ? (formData.periodo_garantia_meses ? Number(formData.periodo_garantia_meses) : null)
+            : null,
         });
         success("Producto actualizado exitosamente");
       } else {
-        await apiClient.post("/inventory/products/", formData);
+        if (formData.stock_maximo && formData.stock_maximo < formData.stock_minimo) {
+          error("El stock maximo debe ser mayor o igual al stock minimo");
+          return;
+        }
+        await apiClient.post("/inventory/products/", {
+          ...formData,
+          fecha_compra: formData.fecha_compra || null,
+          fecha_vencimiento: usesWarrantyPeriod ? null : (formData.fecha_vencimiento || null),
+          periodo_garantia_meses: usesWarrantyPeriod
+            ? (formData.periodo_garantia_meses ? Number(formData.periodo_garantia_meses) : null)
+            : null,
+        });
         success("Producto creado exitosamente");
       }
       setShowForm(false);
@@ -430,7 +466,7 @@ export default function ProductosPage() {
               <div className="mb-6 rounded border border-gray-200 p-4">
                 <h3 className="mb-2 text-lg font-medium text-gray-900">Importar archivo</h3>
                 <p className="mb-3 text-sm text-gray-700">
-                  Carga un CSV con columnas: name, category, sku, barcode, qr_code, description, unit, stock_minimo, stock_actual
+                  Carga un CSV con columnas: name, category, sku, barcode, qr_code, description, unit, stock_minimo, stock_maximo, stock_actual, fecha_compra, fecha_vencimiento, periodo_garantia_meses
                 </p>
                 <div className="flex flex-col gap-3 md:flex-row md:items-center">
                   <input
@@ -559,6 +595,16 @@ export default function ProductosPage() {
                   />
                 </div>
                 <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-900">Stock Máximo</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    className="w-full rounded border px-3 py-2 text-gray-900 placeholder:text-gray-500"
+                    value={formData.stock_maximo}
+                    onChange={(e) => setFormData({ ...formData, stock_maximo: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
                   <label className="mb-1 block text-sm font-medium text-gray-900">Stock</label>
                   <input
                     type="number"
@@ -575,14 +621,36 @@ export default function ProductosPage() {
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-900">Fecha de Vencimiento <span className="text-slate-400 font-normal">(opcional)</span></label>
+                  <label className="mb-1 block text-sm font-medium text-gray-900">Fecha de Compra <span className="text-slate-400 font-normal">(opcional)</span></label>
                   <input
                     type="date"
                     className="w-full rounded border px-3 py-2 text-gray-900"
-                    value={formData.fecha_vencimiento}
-                    onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
+                    value={formData.fecha_compra}
+                    onChange={(e) => setFormData({ ...formData, fecha_compra: e.target.value })}
                   />
                 </div>
+                {usesWarrantyPeriod ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-900">Periodo de Garantia (meses) <span className="text-slate-400 font-normal">(opcional)</span></label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full rounded border px-3 py-2 text-gray-900"
+                      value={formData.periodo_garantia_meses}
+                      onChange={(e) => setFormData({ ...formData, periodo_garantia_meses: e.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-900">Fecha de Vencimiento <span className="text-slate-400 font-normal">(opcional)</span></label>
+                    <input
+                      type="date"
+                      className="w-full rounded border px-3 py-2 text-gray-900"
+                      value={formData.fecha_vencimiento}
+                      onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
+                    />
+                  </div>
+                )}
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-gray-900">Descripción (opcional)</label>
                   <textarea
@@ -613,8 +681,11 @@ export default function ProductosPage() {
                     <th className="px-4 py-3 text-left text-gray-900">SKU</th>
                     <th className="px-4 py-3 text-left text-gray-900">Stock</th>
                     <th className="px-4 py-3 text-left text-gray-900">Stock Mín</th>
+                    <th className="px-4 py-3 text-left text-gray-900">Stock Máx</th>
                     <th className="px-4 py-3 text-left text-gray-900">Unidad</th>
+                    <th className="px-4 py-3 text-left text-gray-900">Fecha Compra</th>
                     <th className="px-4 py-3 text-left text-gray-900">Vencimiento</th>
+                    <th className="px-4 py-3 text-left text-gray-900">Garantía</th>
                     <th className="px-4 py-3 text-left text-gray-900">Estado</th>
                     {isAdmin && <th className="px-4 py-3 text-left text-gray-900">Acciones</th>}
                   </tr>
@@ -631,7 +702,11 @@ export default function ProductosPage() {
                         {product.stock_actual}
                       </td>
                       <td className="px-4 py-3 text-gray-900">{product.stock_minimo}</td>
+                      <td className="px-4 py-3 text-gray-900">{product.stock_maximo || "-"}</td>
                       <td className="px-4 py-3 text-gray-900">{capitalizeFirst(product.unit)}</td>
+                      <td className="px-4 py-3 text-gray-900">
+                        {product.fecha_compra ? new Date(product.fecha_compra).toLocaleDateString("es-CO") : "-"}
+                      </td>
                       <td className="px-4 py-3 text-gray-900">
                         {product.fecha_vencimiento ? (
                           <span className={`rounded px-2 py-1 text-xs font-medium ${
@@ -647,6 +722,7 @@ export default function ProductosPage() {
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-gray-900">{product.periodo_garantia_meses ?? "-"}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded px-2 py-1 text-xs ${
                           product.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"

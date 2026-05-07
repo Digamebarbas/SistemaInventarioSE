@@ -1,3 +1,6 @@
+import csv
+
+from django.http import HttpResponse
 from django.db import models
 from django.db.models import Count, Sum
 from rest_framework.response import Response
@@ -7,6 +10,25 @@ from accounts.tenancy import get_request_company
 from config.permissions import IsPlatformAdmin
 
 from inventory.models import InventoryMovement, Product
+
+
+def maybe_csv_response(request, rows, filename_prefix):
+	if request.query_params.get("export") != "csv":
+		return None
+
+	response = HttpResponse(content_type="text/csv")
+	response["Content-Disposition"] = f'attachment; filename="{filename_prefix}.csv"'
+
+	writer = csv.writer(response)
+	if not rows:
+		return response
+
+	headers = list(rows[0].keys())
+	writer.writerow(headers)
+	for row in rows:
+		writer.writerow([row.get(header) for header in headers])
+
+	return response
 
 
 class CurrentStockReport(APIView):
@@ -20,8 +42,13 @@ class CurrentStockReport(APIView):
 			"sku",
 			"stock_actual",
 			"stock_minimo",
+			"stock_maximo",
 		).order_by("name")
-		return Response(list(products))
+		rows = list(products)
+		csv_response = maybe_csv_response(request, rows, "reporte_stock_actual")
+		if csv_response:
+			return csv_response
+		return Response(rows)
 
 
 class LowStockReport(APIView):
@@ -32,8 +59,12 @@ class LowStockReport(APIView):
 		products = Product.objects.filter(
 			company=company,
 			stock_actual__lte=models.F("stock_minimo")
-		).values("id", "name", "sku", "stock_actual", "stock_minimo")
-		return Response(list(products))
+		).values("id", "name", "sku", "stock_actual", "stock_minimo", "stock_maximo")
+		rows = list(products)
+		csv_response = maybe_csv_response(request, rows, "reporte_stock_bajo")
+		if csv_response:
+			return csv_response
+		return Response(rows)
 
 
 class MovementRangeReport(APIView):
@@ -58,7 +89,11 @@ class MovementRangeReport(APIView):
 			"product__name",
 			"product__sku",
 		).order_by("-created_at")
-		return Response(list(data))
+		rows = list(data)
+		csv_response = maybe_csv_response(request, rows, "reporte_movimientos")
+		if csv_response:
+			return csv_response
+		return Response(rows)
 
 
 class EntriesBySupplierReport(APIView):
@@ -72,7 +107,11 @@ class EntriesBySupplierReport(APIView):
 			.annotate(total=Sum("quantity"))
 			.order_by("-total")
 		)
-		return Response(list(data))
+		rows = list(data)
+		csv_response = maybe_csv_response(request, rows, "reporte_entradas_proveedor")
+		if csv_response:
+			return csv_response
+		return Response(rows)
 
 
 class ExitsByCustomerReport(APIView):
@@ -86,7 +125,11 @@ class ExitsByCustomerReport(APIView):
 			.annotate(total=Sum("quantity"))
 			.order_by("-total")
 		)
-		return Response(list(data))
+		rows = list(data)
+		csv_response = maybe_csv_response(request, rows, "reporte_salidas_cliente")
+		if csv_response:
+			return csv_response
+		return Response(rows)
 
 
 class TopProductsReport(APIView):
@@ -100,6 +143,10 @@ class TopProductsReport(APIView):
 			.annotate(total=Sum("quantity"), movements=Count("id"))
 			.order_by("-total")[:10]
 		)
-		return Response(list(data))
+		rows = list(data)
+		csv_response = maybe_csv_response(request, rows, "reporte_top_productos")
+		if csv_response:
+			return csv_response
+		return Response(rows)
 
 # Create your views here.

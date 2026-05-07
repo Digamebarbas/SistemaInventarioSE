@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 export default function ReportesPage() {
   const [reportType, setReportType] = useState("");
+  const [selectedReportId, setSelectedReportId] = useState("");
   const [reportData, setReportData] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -34,6 +35,26 @@ export default function ReportesPage() {
       alert("Error al cargar reporte");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exportReportCsv = async () => {
+    if (!selectedReportId) return;
+    try {
+      const response = await apiClient.get(`/reports/${selectedReportId}/?export=csv`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${selectedReportId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("No se pudo exportar el reporte a CSV");
     }
   };
 
@@ -96,6 +117,7 @@ export default function ReportesPage() {
                   key={report.id}
                   onClick={() => {
                     setReportType(report.name);
+                    setSelectedReportId(report.id);
                     loadReport(report.id);
                   }}
                   className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
@@ -111,7 +133,16 @@ export default function ReportesPage() {
           {isAdmin && reportType && !loading && (
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-200 p-5">
-                <h2 className="text-xl font-semibold text-slate-900">{reportType}</h2>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-semibold text-slate-900">{reportType}</h2>
+                  <button
+                    type="button"
+                    onClick={exportReportCsv}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                  >
+                    Exportar CSV
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
