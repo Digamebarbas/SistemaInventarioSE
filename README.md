@@ -38,15 +38,6 @@ Sistema web para gestion de inventario, trazabilidad y analitica operativa para 
   - fecha de vencimiento o garantia segun el tipo de empresa
 - Importacion de productos por CSV
 
-### Reglas de negocio por empresa
-
-- Empresas que manejan garantia:
-  - usan `periodo_garantia_meses`
-  - no usan `fecha_vencimiento`
-- Empresas que manejan vencimiento:
-  - usan `fecha_vencimiento`
-  - no usan `periodo_garantia_meses`
-
 ### CRM
 
 - CRUD de clientes
@@ -143,8 +134,6 @@ Variables comunes:
 ### Frontend
 
 - `NEXT_PUBLIC_API_URL`
-
-## Endpoints Relevantes
 
 ### Autenticacion
 

@@ -685,7 +685,7 @@ export default function ProductosPage() {
                     <th className="px-4 py-3 text-left text-gray-900">Unidad</th>
                     <th className="px-4 py-3 text-left text-gray-900">Fecha Compra</th>
                     <th className="px-4 py-3 text-left text-gray-900">Vencimiento</th>
-                    <th className="px-4 py-3 text-left text-gray-900">Garantía</th>
+                    <th className="px-4 py-3 text-left text-gray-900">Garantía (meses)</th>
                     <th className="px-4 py-3 text-left text-gray-900">Estado</th>
                     {isAdmin && <th className="px-4 py-3 text-left text-gray-900">Acciones</th>}
                   </tr>
@@ -722,7 +722,9 @@ export default function ProductosPage() {
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-900">{product.periodo_garantia_meses ?? "-"}</td>
+                      <td className="px-4 py-3 text-gray-900">
+                        {product.periodo_garantia_meses ? `${product.periodo_garantia_meses} meses` : "-"}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`rounded px-2 py-1 text-xs ${
                           product.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
