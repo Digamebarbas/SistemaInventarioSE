@@ -1,262 +1,207 @@
-# Guía de Instalación y Configuración
+# Guia de Instalacion, Configuracion y Despliegue
 
-## Preparación del Proyecto
+Este documento describe como ejecutar el sistema en desarrollo local y como desplegarlo en Render y Vercel.
 
-### Base de Datos Limpia
-La base de datos está lista para desarrollo. No hay datos de demostración cargados.
+## 1. Requisitos Previos
 
-### Requisitos Previos
+- Python 3.11 o superior
+- Node.js 18 o superior
+- npm
+- Git
+- Cuenta en Supabase si se usara PostgreSQL administrado
+- Cuenta en Render para backend
+- Cuenta en Vercel para frontend
 
-- **Python 3.11+**
-- **Node.js 18+**
-- **pip** (gestor de paquetes Python)
-- **npm** (gestor de paquetes Node.js)
+## 2. Configuracion Local
 
----
+### 2.1 Backend
 
-## Instalación Paso a Paso
-
-### 1. Backend (Django + DRF)
-
-#### 1.1 Crear y activar entorno virtual
+Desde la raiz del proyecto:
 
 ```bash
-# Windows
 python -m venv .venv
 .venv\Scripts\activate
-
-# Linux/Mac
-python -m venv .venv
-source .venv/bin/activate
-```
-
-#### 1.2 Instalar dependencias
-
-```bash
 pip install -r backend/requirements.txt
 ```
 
-#### 1.3 Variables de entorno
+Crear o ajustar `backend/.env`.
 
-Copiar `backend/.env.example` a `backend/.env` y configurar si es necesario:
+Ejemplo con SQLite:
 
 ```env
-DJANGO_SECRET_KEY=tu-clave-secreta-aqui
+DJANGO_SECRET_KEY=dev-secret-key
 DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Opcion 1: SQLite local
-# DATABASE_URL=sqlite:///db.sqlite3
-
-# Opcion 2: Supabase (recomendado para pruebas de nube)
-DATABASE_URL=postgresql://postgres:password@db.xxxxxxxxxxxxx.supabase.co:5432/postgres
-DB_SSL_REQUIRE=True
+DATABASE_URL=sqlite:///db.sqlite3
+DB_SSL_REQUIRE=False
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000
 ```
 
-#### 1.4 Aplicar migraciones
+Ejemplo con Supabase:
+
+```env
+DJANGO_SECRET_KEY=dev-secret-key
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_URL=postgresql://usuario:password@host:puerto/postgres
+DB_SSL_REQUIRE=True
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000
+```
+
+Aplicar migraciones:
 
 ```bash
 cd backend
 python manage.py migrate
 ```
 
-#### 1.5 Crear usuario administrativo
-
-```bash
-python manage.py createsuperuser
-```
-
-Responde a las preguntas interactivas. Ejemplo:
-- Usuario: `admin`
-- Email: `admin@example.com`
-- Contraseña: `admin123`
-
-#### 1.6 Ejecutar servidor
+Ejecutar backend:
 
 ```bash
 python manage.py runserver
 ```
 
-El backend estará disponible en **http://localhost:8000**
-
----
-
-### 2. Frontend (Next.js + React)
-
-#### 2.1 Instalar dependencias
+### 2.2 Frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-#### 2.2 Variables de entorno
-
-El archivo `.env.local` ya está configurado. Verificar que contenga:
+Crear `frontend/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
 ```
 
-#### 2.3 Ejecutar servidor de desarrollo
+Ejecutar frontend:
 
 ```bash
 npm run dev
 ```
 
-El frontend estará disponible en **http://localhost:3000**
+## 3. Flujo Inicial de Uso
 
----
+1. Abrir el frontend en `http://localhost:3000`
+2. Iniciar sesion con un usuario valido
+3. Seleccionar o crear empresa
+4. Gestionar productos, movimientos, clientes y proveedores
+5. Consultar reportes y exportarlos a CSV
 
-## Flujo de Uso Inicial
+## 4. Datos y Reglas de Negocio
 
-1. **Accede a http://localhost:3000**
-   - Se redirige automáticamente a `/login`
+### Productos
 
-2. **Inicia sesión con tus credenciales**
-   - Usuario: `admin`
-   - Contraseña: `admin123` (o la que creaste)
+Cada producto puede manejar:
 
-3. **Primera vez que accedes**
-   - Se te pedirá cambiar la contraseña obligatoriamente
-   - Esto es por seguridad (todas las nuevas cuentas requieren cambio en primer login)
+- fecha de compra
+- stock minimo
+- stock maximo
+- fecha de vencimiento o garantia
 
-4. **Después del cambio de contraseña**
-   - Accedes al onboarding donde puedes crear tu primera empresa
-   - Selecciona una categoría de inventario (General, Alimentos, Electrónicos, etc.)
-   - ¡Comienza a usar el sistema!
+### Regla por empresa
 
----
+- Si `uses_warranty_period=True`, el producto usa `periodo_garantia_meses`
+- Si `uses_warranty_period=False`, el producto usa `fecha_vencimiento`
 
-## Estructura de Carpetas
+No deben usarse ambos campos a la vez.
 
-```
-backend/
-├── config/              # Configuración central Django
-│   ├── settings.py      # Configuración del proyecto
-│   ├── urls.py          # Rutas principales
-│   ├── permissions.py   # Permisos personalizados
-│   └── wsgi.py
-├── accounts/            # Autenticación y gestión de usuarios
-│   ├── models.py        # Modelos User, Company, UserCompany
-│   ├── views.py         # Vistas de autenticación
-│   ├── serializers.py   # Serializadores JWT
-│   └── tenancy.py       # Lógica multi-tenant
-├── inventory/           # Gestión de inventario
-│   ├── models.py        # Product, InventoryMovement
-│   └── views.py         # ProductViewSet, MovementViewSet
-├── crm/                 # Clientes y proveedores
-│   ├── models.py        # Customer, Supplier
-│   └── views.py         # CSVImporter integrado
-├── alerts/              # Sistema de alertas
-├── audit/               # Auditoría y logs
-├── reports/             # Reportes
-├── metrics/             # Métricas del dashboard
-├── manage.py
-├── requirements.txt     # Dependencias Python
-└── db.sqlite3           # BD (desarrollo local)
+## 5. Despliegue en Render
 
-frontend/
-├── src/
-│   ├── app/
-│   │   ├── login/           # Página de autenticación
-│   │   ├── dashboard/       # Dashboard con métricas
-│   │   ├── cambiar-contrasena/  # Cambio obligatorio de PWD
-│   │   ├── configuracion-inicial/   # Onboarding
-│   │   ├── clientes/        # CRUD + importación CSV
-│   │   ├── proveedores/     # CRUD + importación CSV
-│   │   ├── productos/       # CRUD de productos
-│   │   ├── movimientos/     # Movimientos de inventario
-│   │   ├── alertas/         # Alertas de stock
-│   │   ├── reportes/        # Reportes
-│   │   └── usuarios/        # Gestión de usuarios
-│   ├── components/
-│   │   ├── CSVImporter.tsx  # Modal para importar CSV
-│   │   ├── ProtectedRoute.tsx   # HOC de protección
-│   │   ├── Sidebar.tsx      # Navegación
-│   │   └── Toast.tsx        # Notificaciones
-│   └── lib/
-│       ├── api.ts          # Cliente axios con JWT
-│       └── useNotification.ts
-├── package.json
-└── .env.local
+### 5.1 Configuracion recomendada
+
+- Service Type: Web Service
+- Root Directory: `backend`
+- Runtime: Python
+- Build Command:
+
+```bash
+pip install -r requirements.txt
 ```
 
----
+- Start Command:
 
-## APIs Principales
-
-### Autenticación
-
-```
-POST   /api/auth/token/              → Login (obtener JWT)
-POST   /api/auth/token/refresh/      → Refrescar token
-POST   /api/auth/change-password/    → Cambiar contraseña
-POST   /api/auth/companies/create/   → Crear empresa (onboarding)
-GET    /api/auth/me/                 → Usuario actual
+```bash
+python manage.py migrate --noinput && python -m gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
 ```
 
-### Inventario
+### 5.2 Variables de entorno en Render
 
-```
-GET    /api/inventory/products/                 → Listar productos
-POST   /api/inventory/products/                 → Crear producto
-PUT    /api/inventory/products/{id}/            → Actualizar
-DELETE /api/inventory/products/{id}/            → Eliminar
-POST   /api/inventory/products/import_csv/      → Importar CSV
+Configurar al menos:
 
-GET    /api/inventory/movements/                → Listar movimientos
-POST   /api/inventory/movements/                → Crear movimiento
-```
-
-### CRM
-
-```
-GET    /api/crm/customers/                     → Listar clientes
-POST   /api/crm/customers/                     → Crear cliente
-POST   /api/crm/customers/import_csv/          → Importar CSV clientes
-
-GET    /api/crm/suppliers/                     → Listar proveedores
-POST   /api/crm/suppliers/                     → Crear proveedor
-POST   /api/crm/suppliers/import_csv/          → Importar CSV proveedores
+```env
+DJANGO_SECRET_KEY=tu-clave-secreta
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=.onrender.com,tu-servicio.onrender.com
+DATABASE_URL=postgresql://...
+DB_SSL_REQUIRE=True
+CORS_ALLOWED_ORIGINS=https://tu-frontend.vercel.app
+CSRF_TRUSTED_ORIGINS=https://tu-frontend.vercel.app,https://*.vercel.app
 ```
 
-### Reportes
+Notas:
 
+- Si Render Free no permite usar shell remoto, el `migrate` debe ejecutarse dentro del Start Command.
+- Si el frontend usa dominios preview de Vercel, se recomienda permitir `*.vercel.app` por regex desde backend.
+
+## 6. Despliegue en Vercel
+
+- Root Directory: `frontend`
+- Framework: Next.js
+- Variable requerida:
+
+```env
+NEXT_PUBLIC_API_URL=https://tu-backend.onrender.com/api
 ```
-GET    /api/reports/existencias/               → Reporte de existencias
-GET    /api/reports/bajo-stock/                → Productos con bajo stock
-GET    /api/reports/movimientos/               → Movimientos por rango
-GET    /api/reports/entradas-proveedor/        → Entradas por proveedor
-GET    /api/reports/salidas-cliente/           → Salidas por cliente
-GET    /api/reports/top-productos/             → Top 10 productos
-```
 
----
+Despues de cambiar variables de entorno:
 
-## Buenas Prácticas Implementadas
+1. guardar
+2. redeploy del ultimo deployment
+
+## 7. Validaciones Post-Despliegue
 
 ### Backend
-- ✅ **Autenticación JWT**: Segura y stateless
-- ✅ **Permisos granulares**: RBAC con roles y permisos
-- ✅ **Multi-tenant**: Aislamiento de datos por empresa
-- ✅ **Validación de datos**: Serializadores con validación
-- ✅ **Auditoría**: Logs inmutables de todas las acciones
-- ✅ **Manejo de errores**: Respuestas consistentes
-- ✅ **Paginación**: En todos los endpoints
-- ✅ **Filtrado y búsqueda**: Soporte en listas
+
+Probar:
+
+```text
+GET /api/auth/companies/
+GET /api/reports/current-stock/
+```
 
 ### Frontend
-- ✅ **Componentes reutilizables**: HOCs, helpers
-- ✅ **State management**: React Hooks y Context
-- ✅ **Rutas protegidas**: Redireccionamiento automático
-- ✅ **Interceptores HTTP**: Manejo de tokens
-- ✅ **TypeScript**: Type safety
-- ✅ **Responsive design**: Tailwind CSS
-- ✅ **Notificaciones**: Sistema de toasts
-- ✅ **Variables de entorno**: Configuración segura
 
----
+Verificar:
+
+- listado de empresas visible en login
+- carga de productos
+- nuevos campos de productos visibles
+- exportacion CSV en reportes
+
+## 8. Problemas Comunes
+
+### No aparecen empresas en login
+
+- revisar `NEXT_PUBLIC_API_URL`
+- revisar CORS y CSRF en backend
+- revisar que el backend responda `GET /api/auth/companies/`
+
+### Error 400 en Render
+
+- revisar `DJANGO_ALLOWED_HOSTS`
+- usar `.onrender.com,tu-servicio.onrender.com`
+
+### Las migraciones no corren en Render Free
+
+- ejecutar migraciones desde el Start Command, no desde shell remoto
+
+### El frontend no refleja cambios
+
+- redeploy en Vercel
+- limpiar cache del navegador si persiste una respuesta vieja
 
 ## Troubleshooting
 

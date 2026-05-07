@@ -1,215 +1,210 @@
 # Sistema de Inventario y Trazabilidad
 
-Sistema digital de inventarios y trazabilidad para PYMEs, desarrollado con **Django + DRF** (backend) y **Next.js + React** (frontend).
+Sistema web para gestion de inventario, trazabilidad y analitica operativa para PYMEs. El proyecto fue desarrollado con Django REST Framework en el backend y Next.js en el frontend, con soporte multiempresa, control de roles, reportes exportables y despliegue en la nube.
 
-## Características
+## Resumen
 
-### Backend (Django + DRF + PostgreSQL)
-- ✅ Autenticación JWT con refresh token
-- ✅ RBAC (roles Admin y Usuario) con permisos diferenciados
-- ✅ Gestión de productos con soporte a código de barras/QR
-- ✅ Control automático de stock (entradas, salidas y ajustes)
-- ✅ Trazabilidad completa de movimientos
-- ✅ CRUD de clientes y proveedores
-- ✅ Alertas automáticas de stock bajo
-- ✅ 6 reportes principales:
-  - Existencias actuales
-  - Productos con bajo stock
-  - Movimientos por rango de fechas
-  - Entradas por proveedor
-  - Salidas por cliente
-  - Top 10 productos más vendidos
-- ✅ Métricas en tiempo real para el dashboard
-- ✅ Auditoría completa (logs inmutables de creación, actualización, eliminación)
-- ✅ Configuración CORS para integración con Vercel
+- Backend: Django 5 + DRF + JWT + PostgreSQL/Supabase
+- Frontend: Next.js 16 + React + TypeScript
+- Despliegue: Render para backend y Vercel para frontend
+- Arquitectura: multi-tenant por empresa con aislamiento de datos
+- Estado: funcional para operaciones de inventario, CRM, alertas, metricas, auditoria y reportes
 
-### Frontend (Next.js + React + TypeScript)
-- ✅ Autenticación JWT con interceptor de axios
-- ✅ Rutas protegidas mediante HOC
-- ✅ Dashboard con métricas en tiempo real
-- ✅ Página de login responsiva
-- ✅ Preparado para despliegue en Vercel
+## Funcionalidades Principales
 
-## Estructura del Proyecto
+### Autenticacion y seguridad
 
-```
+- Inicio de sesion con JWT y refresh token
+- Roles `Admin` y `Usuario`
+- Rutas protegidas en frontend
+- Aislamiento de informacion por empresa
+- Cambio obligatorio de contrasena para cuentas iniciales
+
+### Inventario
+
+- CRUD de productos
+- Entradas, salidas y ajustes con trazabilidad
+- Campos por producto:
+  - nombre
+  - categoria
+  - SKU
+  - codigo de barras
+  - codigo QR
+  - unidad de medida
+  - stock actual
+  - stock minimo
+  - stock maximo
+  - fecha de compra
+  - fecha de vencimiento o garantia segun el tipo de empresa
+- Importacion de productos por CSV
+
+### Reglas de negocio por empresa
+
+- Empresas que manejan garantia:
+  - usan `periodo_garantia_meses`
+  - no usan `fecha_vencimiento`
+- Empresas que manejan vencimiento:
+  - usan `fecha_vencimiento`
+  - no usan `periodo_garantia_meses`
+
+### CRM
+
+- CRUD de clientes
+- CRUD de proveedores
+- Importacion por CSV
+
+### Alertas y control
+
+- Alertas de stock bajo
+- Dashboard con metricas en tiempo real
+- Auditoria de acciones relevantes
+
+### Reportes
+
+- Existencias actuales
+- Productos con bajo stock
+- Movimientos por rango de fechas
+- Entradas por proveedor
+- Salidas por cliente
+- Top 10 productos mas vendidos
+- Exportacion de reportes a CSV
+
+## Estructura General
+
+```text
 SistemaInventarioV2/
 ├── backend/
-│   ├── config/           # Configuración principal Django
-│   ├── accounts/         # Autenticación y roles (JWT)
-│   ├── inventory/        # Productos y movimientos
-│   ├── crm/              # Clientes y proveedores
-│   ├── alerts/           # Alertas de stock
-│   ├── audit/            # Logs de auditoría
-│   ├── reports/          # 6 reportes principales
-│   ├── metrics/          # Dashboard y métricas
+│   ├── accounts/      Autenticacion, empresas y tenancy
+│   ├── inventory/     Productos y movimientos
+│   ├── crm/           Clientes y proveedores
+│   ├── alerts/        Alertas operativas
+│   ├── audit/         Auditoria de acciones
+│   ├── reports/       Reportes y exportacion CSV
+│   ├── metrics/       Indicadores del dashboard
+│   ├── config/        Settings y rutas Django
 │   ├── manage.py
-│   ├── requirements.txt
-│   └── .env.example
-└── frontend/
-    ├── src/
-    │   ├── app/
-    │   │   ├── login/       # Página de login
-    │   │   ├── dashboard/   # Dashboard con métricas
-    │   │   └── page.tsx     # Redirige a /login
-    │   ├── components/
-    │   │   └── ProtectedRoute.tsx  # HOC para rutas protegidas
-    │   └── lib/
-    │       └── api.ts       # Cliente axios con JWT refresh
-    ├── package.json
-    └── .env.local
+│   └── requirements.txt
+├── frontend/
+│   ├── src/app/       Rutas App Router
+│   ├── src/components/
+│   ├── src/lib/
+│   └── package.json
+├── README.md
+├── SETUP.md
+└── ARQUITECTURA.md
 ```
 
-## Pre-requisitos
+## Requisitos
 
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL 14+ (o SQLite para desarrollo local)
+- npm
+- Base de datos PostgreSQL o SQLite para desarrollo local
 
-## Instalación y Configuración
+## Ejecucion Local
 
 ### Backend
 
-1. **Crear entorno virtual y activarlo:**
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate  # Windows
-   source .venv/bin/activate  # Linux/Mac
-   ```
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r backend/requirements.txt
+cd backend
+python manage.py migrate
+python manage.py runserver
+```
 
-2. **Instalar dependencias:**
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-
-3. **Configurar variables de entorno:**
-   - Copiar `backend/.env.example` a `backend/.env`
-   - Editar los valores según tu configuración local o producción
-
-4. **Aplicar migraciones:**
-   ```bash
-   python backend/manage.py makemigrations
-   python backend/manage.py migrate
-   ```
-
-5. **Crear superusuario:**
-   ```bash
-   python backend/manage.py createsuperuser
-   ```
-
-6. **Correr servidor de desarrollo:**
-   ```bash
-   python backend/manage.py runserver
-   ```
-
-   El backend estará en `http://localhost:8000`
+Backend disponible en `http://localhost:8000`
 
 ### Frontend
 
-1. **Instalar dependencias:**
-   ```bash
-   cd frontend
-   npm install
-   ```
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-2. **Configurar variables de entorno:**
-   - Copiar `frontend/.env.local` (ya creado)
-   - Asegurar que `NEXT_PUBLIC_API_URL` apunte al backend
+Frontend disponible en `http://localhost:3000`
 
-3. **Correr servidor de desarrollo:**
-   ```bash
-   npm run dev
-   ```
+## Variables de Entorno
 
-   El frontend estará en `http://localhost:3000`
+### Backend
 
-## Uso
+Variables comunes:
 
-1. Accede a `http://localhost:3000` (redirige a `/login`)
-2. Inicia sesión con el superusuario creado
-3. Explora el dashboard con métricas en tiempo real
-4. Administra productos, clientes, proveedores, movimientos, alertas y reportes desde la API
+- `DJANGO_SECRET_KEY`
+- `DJANGO_DEBUG`
+- `DJANGO_ALLOWED_HOSTS`
+- `DATABASE_URL`
+- `DB_SSL_REQUIRE`
+- `CORS_ALLOWED_ORIGINS`
+- `CSRF_TRUSTED_ORIGINS`
 
-## Endpoints principales
+### Frontend
 
-### Autenticación
-- `POST /api/auth/register/` - Registro de usuario
-- `POST /api/auth/token/` - Login (obtener access y refresh token)
-- `POST /api/auth/token/refresh/` - Refrescar access token
-- `GET /api/auth/me/` - Obtener datos del usuario actual
+- `NEXT_PUBLIC_API_URL`
+
+## Endpoints Relevantes
+
+### Autenticacion
+
+- `POST /api/auth/token/`
+- `POST /api/auth/token/refresh/`
+- `GET /api/auth/me/`
+- `GET /api/auth/companies/`
+- `POST /api/auth/companies/create/`
+- `POST /api/auth/change-password/`
 
 ### Inventario
-- `GET/POST/PUT/DELETE /api/inventory/products/` - CRUD de productos
-- `GET/POST /api/inventory/movements/` - Movimientos (entradas, salidas, ajustes)
+
+- `GET /api/inventory/products/`
+- `POST /api/inventory/products/`
+- `PATCH /api/inventory/products/{id}/`
+- `POST /api/inventory/products/import_file/`
+- `GET /api/inventory/movements/`
+- `POST /api/inventory/movements/`
 
 ### CRM
-- `GET/POST/PUT/DELETE /api/crm/customers/` - CRUD de clientes
-- `GET/POST/PUT/DELETE /api/crm/suppliers/` - CRUD de proveedores
 
-### Alertas
-- `GET /api/alerts/` - Consultar alertas de stock bajo
-- `PATCH /api/alerts/{id}/resolve/` - Marcar alerta como resuelta
+- `GET /api/crm/customers/`
+- `GET /api/crm/suppliers/`
 
 ### Reportes
-- `GET /api/reports/current-stock/` - Existencias actuales
-- `GET /api/reports/low-stock/` - Productos con bajo stock
-- `GET /api/reports/movements/?start=YYYY-MM-DD&end=YYYY-MM-DD` - Movimientos por rango
-- `GET /api/reports/entries-by-supplier/` - Entradas por proveedor
-- `GET /api/reports/exits-by-customer/` - Salidas por cliente
-- `GET /api/reports/top-products/` - Top 10 productos más vendidos
 
-### Métricas
-- `GET /api/metrics/dashboard/` - Dashboard con métricas en tiempo real
+- `GET /api/reports/current-stock/`
+- `GET /api/reports/low-stock/`
+- `GET /api/reports/movements/?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- `GET /api/reports/entries-by-supplier/`
+- `GET /api/reports/exits-by-customer/`
+- `GET /api/reports/top-products/`
+- Exportacion CSV: agregar `?export=csv`
 
 ## Despliegue
 
-### Backend (Render, Railway, etc.)
+### Backend en Render
 
-1. Crear proyecto en Supabase (PostgreSQL)
-2. Configurar las variables de entorno en el panel de tu servicio:
-   - `DJANGO_SECRET_KEY`
-   - `DJANGO_DEBUG=False`
-   - `DJANGO_ALLOWED_HOSTS=tu-dominio.onrender.com`
-   - `DATABASE_URL=postgresql://...` (cadena de conexión de Supabase)
-   - `DB_SSL_REQUIRE=True`
-   - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT` (opcionales)
-   - `CORS_ALLOWED_ORIGINS=https://tu-frontend.vercel.app`
-   - `CSRF_TRUSTED_ORIGINS=https://tu-frontend.vercel.app`
-3. Desplegar el código del directorio `backend/`
-4. Ejecutar migraciones y crear superusuario desde el shell remoto
+- Root Directory: `backend`
+- Build Command: `pip install -r requirements.txt`
+- Start Command:
 
-### Frontend (Vercel)
+```bash
+python manage.py migrate --noinput && python -m gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+```
 
-1. Conectar el repositorio a Vercel
-2. Configurar el directorio raíz como `frontend/`
-3. Agregar la variable de entorno:
-   - `NEXT_PUBLIC_API_URL=https://tu-backend.onrender.com/api`
-4. Desplegar
+### Frontend en Vercel
 
-## Tecnologías
+- Root Directory: `frontend`
+- Variable requerida:
 
-- **Backend:** Django 5.2, Django REST Framework, djangorestframework-simplejwt, django-cors-headers, psycopg2-binary
-- **Frontend:** Next.js 16, React, TypeScript, TailwindCSS, Axios
-- **Base de datos:** PostgreSQL (o SQLite para desarrollo local)
+```env
+NEXT_PUBLIC_API_URL=https://tu-backend.onrender.com/api
+```
 
-## Mejoras Futuras (Opcionales)
+## Documentos Complementarios
 
-- Integración de WebSockets (Django Channels) para actualización en tiempo real
-- Lector de código QR/barras en el frontend usando librerías de escaneo
-- Expandir reportes y gráficas usando bibliotecas de visualización (Chart.js, Recharts)
-- Notificaciones por email/SMS cuando se active una alerta
-- Autenticación con OAuth2 (Google, Microsoft)
-- Fecha de compra
-- Fecha de garantía
-- Stock Maximo
-- Unidades de Medidad (Segun Cliente)
-- Top 10 productos más vendidos por temporada (fecha)
+- Ver [SETUP.md](c:/Users/000340182/OneDrive%20-%20UPB/Documents/SistemaInventarioV2/SETUP.md) para instalacion y despliegue paso a paso.
+- Ver [ARQUITECTURA.md](c:/Users/000340182/OneDrive%20-%20UPB/Documents/SistemaInventarioV2/ARQUITECTURA.md) para la explicacion tecnica del sistema.
 
-## Licencia
+## Estado del Proyecto
 
-Este proyecto es de uso interno para PYMEs y está provisto "tal cual" sin garantías.
-
----
-
-Desarrollado por: [Diego A Martinez - Mateo Ortiz]  
-Fecha: Febrero 2026
+El proyecto incluye implementacion funcional de inventario, CRM, dashboard, reportes, exportacion CSV, multiempresa, validaciones de negocio por tipo de empresa y datos iniciales de prueba para companias ya creadas.

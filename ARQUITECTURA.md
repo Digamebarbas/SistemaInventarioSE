@@ -1,263 +1,230 @@
-# Arquitectura y Buenas Prácticas de Código
+# Arquitectura del Proyecto
 
-## Arquitectura General
+## 1. Vision General
 
-### Patrón MVC (Modificado para REST API)
+El sistema esta construido como una aplicacion web desacoplada:
 
-El proyecto sigue un patrón adaptado de MVC para APIs REST:
-
-```
-Request HTTP
-    ↓
-[URLRouter] → Ruta la solicitud a la vista
-    ↓
-[ViewSet/View] → Procesa la lógica de negocio
-    ↓
-[Serializer] → Valida y transforma datos
-    ↓
-[Model] → Accede a la base de datos
-    ↓
-Response JSON
+```text
+Frontend Next.js
+  ↓ HTTP/JSON
+Backend Django REST Framework
+  ↓ ORM
+PostgreSQL / SQLite
 ```
 
----
+El frontend consume la API REST del backend mediante Axios. El backend aplica autenticacion JWT, permisos, reglas de negocio y persistencia.
 
-## Backend - Django REST Framework
+## 2. Capas del Sistema
 
-### 1. Estructura de Aplicaciones
+### Frontend
 
-El proyecto está dividido en aplicaciones especializadas:
+- Implementado con Next.js App Router
+- Vistas protegidas por autenticacion
+- Cliente HTTP centralizado en `frontend/src/lib/api.ts`
+- Formularios y tablas para operacion del sistema
+- Exportacion CSV disparada desde endpoints del backend
 
-```
-accounts/   → Autenticación, autorización, multi-tenant
-inventory/  → Productos, movimientos de stock
-crm/        → Clientes, proveedores
-alerts/     → Notificaciones y alertas
-audit/      → Trazabilidad y logs inmutables
-reports/    → Reportes y análisis
-metrics/    → Métricas para dashboard
-```
+### Backend
 
-**Ventaja**: Cada aplicación es independiente y reutilizable.
+- Django como framework base
+- Django REST Framework para API
+- Serializers para validacion de datos
+- ViewSets y APIViews para exponer operaciones
+- ORM para acceso a datos
 
-### 2. Autenticación JWT
+### Base de datos
 
-**Archivo**: `accounts/serializers.py`
+- PostgreSQL/Supabase en nube
+- SQLite para desarrollo local si se requiere
 
-```python
-class CompanyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # Agregar datos personalizados al token
-        token['company_id'] = user.usercompany_set.first().company_id
-        token['is_admin'] = user.groups.filter(name='Admin').exists()
-        return token
-```
+## 3. Modulos Principales
 
-**Ventaja**: Los datos del usuario viajan en el token, eliminando consultas a BD.
+### accounts
 
-### 3. Permisos y Autorizaciones
+Responsabilidades:
 
-**Archivo**: `config/permissions.py`
+- login JWT
+- cambio de contrasena
+- empresas
+- membresias usuario-empresa
+- resolucion de empresa activa
 
-```python
-class IsAdminOrReadOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user.groups.filter(name='Admin').exists()
-```
+Entidades clave:
 
-**Ventaja**: Control granular de acceso a resources sin sobrecargar las vistas.
+- `Company`
+- `UserCompany`
 
-### 4. Multi-Tenancy
+Regla importante:
 
-**Archivo**: `accounts/tenancy.py`
+- `Company.uses_warranty_period` define si sus productos usan garantia o vencimiento.
 
-```python
-def get_request_company(request) -> Optional[Company]:
-    """Obtiene la empresa del usuario desde el token JWT"""
-    user = getattr(request, 'user', None)
-    token = getattr(request, 'auth', None)
-    
-    if token:
-        company_id = token.get('company_id')
-        return Company.objects.get(id=company_id)
-    return get_default_company_for_user(user)
-```
+### inventory
 
-**Uso en ViewSet**:
-```python
-def get_queryset(self):
-    company = get_request_company(self.request)
-    return Product.objects.filter(company=company)
-```
+Responsabilidades:
 
-**Ventaja**: 
-- Datos completamente aislados por empresa
-- Seguridad: Un usuario solo ve sus propios datos
-- Escalabilidad: Fácil agregar más empresas
+- productos
+- movimientos de inventario
+- importacion CSV
+- validaciones de stock
 
-### 5. Serializers con Validación
+Entidades clave:
 
-**Archivo**: `crm/serializers.py`
+- `Product`
+- `InventoryMovement`
 
-```python
-class CustomerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = ['id', 'name', 'email', 'phone', 'address', 'tax_id']
-    
-    def validate_email(self, value):
-        if '@' not in value:
-            raise serializers.ValidationError("Email inválido")
-        return value
-```
+Campos relevantes en `Product`:
 
-**Ventaja**: 
-- Validación automática de datos entrada
-- Mensajes de error estándar
-- Documentación automática de campos
+- `stock_minimo`
+- `stock_maximo`
+- `stock_actual`
+- `fecha_compra`
+- `fecha_vencimiento`
+- `periodo_garantia_meses`
 
-### 6. Importación CSV con Manejo de Errores
+Reglas:
 
-**Archivo**: `crm/views.py`
+- stock maximo no puede ser negativo
+- stock maximo debe ser mayor o igual al stock minimo
+- si la empresa maneja garantia, no se permite vencimiento
+- si la empresa maneja vencimiento, no se permite garantia
 
-```python
-@action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
-def import_csv(self, request):
-    # Validar archivo
-    file = request.FILES.get("file")
-    
-    # Procesar línea por línea
-    errors = []
-    created_count = 0
-    
-    for row_num, row in enumerate(csv_reader, start=2):
-        try:
-            obj, created = Model.objects.get_or_create(
-                company=company,
-                **validated_data
-            )
-            if created:
-                created_count += 1
-        except ValidationError as e:
-            errors.append(f"Fila {row_num}: {str(e)}")
-    
-    return Response({
-        'created': created_count,
-        'errors': errors
-    })
-```
+### crm
 
-**Ventaja**:
-- Importa datos sin bloquear la aplicación
-- Reporta errores sin fallar completamente (graceful degradation)
-- Previene duplicados
+Responsabilidades:
 
-### 7. Auditoría Inmutable
+- clientes
+- proveedores
+- importacion CSV
 
-**Archivo**: `audit/models.py`
+### alerts
 
-```python
-class AuditLog(models.Model):
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    action = models.CharField(max_length=10)  # CREATE, UPDATE, DELETE
-    model_name = models.CharField(max_length=50)
-    object_id = models.IntegerField()
-    changes = models.JSONField()  # Qué cambió exactamente
-    timestamp = models.DateTimeField(auto_now_add=True)
+Responsabilidades:
+
+- alertas de stock bajo
+
+### metrics
+
+Responsabilidades:
+
+- metricas consolidadas para dashboard
+
+### reports
+
+Responsabilidades:
+
+- reportes operativos
+- exportacion CSV
+
+Reportes implementados:
+
+- existencias actuales
+- bajo stock
+- movimientos por rango
+- entradas por proveedor
+- salidas por cliente
+- top productos
+
+### audit
+
+Responsabilidades:
+
+- trazabilidad de acciones relevantes del sistema
+
+## 4. Multiempresa
+
+El sistema trabaja con aislamiento por empresa.
+
+Flujo general:
+
+1. el usuario inicia sesion
+2. el token contiene contexto de empresa
+3. `get_request_company(request)` resuelve la empresa activa
+4. los querysets se filtran por esa empresa
+
+Beneficio:
+
+- un usuario solo opera sobre los datos de la empresa activa
+
+## 5. Flujo de Producto
+
+```text
+Usuario crea o edita producto
+  ↓
+Frontend envia payload a /api/inventory/products/
+  ↓
+ProductSerializer valida reglas
+  ↓
+Product se guarda en BD
+  ↓
+Frontend refresca tabla
 ```
 
-**Middleware en `audit/middleware.py`**:
-- Registra todas las acciones
-- No se pueden modificar logs
-- Trazabilidad completa
+Para movimientos:
 
----
-
-## Frontend - Next.js + React
-
-### 1. Componentes Reutilizables
-
-**Ejemplo**: `ProtectedRoute.tsx`
-
-```typescript
-export default function ProtectedRoute({
-  children
-}: {
-  children: React.ReactNode
-}) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      setIsAuthenticated(true);
-    } else {
-      // Redirigir a login
-    }
-    setLoading(false);
-  }, []);
-
-  if (loading) return <LoadingSpinner />;
-  return isAuthenticated ? children : null;
-}
+```text
+Usuario registra entrada/salida/ajuste
+  ↓
+InventoryMovementSerializer valida negocio
+  ↓
+se recalcula stock_actual
+  ↓
+se crea movimiento historico
+  ↓
+se revisa alerta de stock
 ```
 
-**Ventaja**: Reutilizable en múltiples páginas sin duplicar código.
+## 6. Flujo de Reportes
 
-### 2. Interceptor de JWT
-
-**Archivo**: `lib/api.ts`
-
-```typescript
-import axios from 'axios';
-
-const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL
-});
-
-// Interceptor para agregar token automáticamente
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Interceptor para refrescar token cuando expira
-apiClient.interceptors.response.use(
-  response => response,
-  async error => {
-    const originalRequest = error.config;
-    if (error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      // Refrescar token
-      const refreshToken = localStorage.getItem('refresh_token');
-      const response = await axios.post('/api/auth/token/refresh/', { refresh: refreshToken });
-      localStorage.setItem('access_token', response.data.access);
-      return apiClient(originalRequest);
-    }
-    return Promise.reject(error);
-  }
-);
+```text
+Usuario selecciona reporte
+  ↓
+Frontend consulta /api/reports/{reporte}/
+  ↓
+Backend arma queryset agregado
+  ↓
+Respuesta JSON para tabla
 ```
 
-**Ventaja**:
-- Automático: No necesita agregar el token a cada request
-- Renovación automática: El usuario nunca se cierra sesión abruptamente
-- Centralizado: Cambios en una sola ubicación
+Si se requiere exportar:
 
-### 3. Sistema de Notificaciones
+```text
+/api/reports/{reporte}/?export=csv
+  ↓
+Backend genera HttpResponse CSV
+  ↓
+Frontend descarga archivo
+```
 
-**Archivo**: `lib/useNotification.ts`
+## 7. Decisiones Tecnicas Relevantes
 
-```typescript
-export function useNotification() {
+- JWT para mantener autenticacion stateless
+- Multi-tenant por empresa para separar informacion
+- DRF serializers para concentrar validaciones de negocio
+- Next.js para interfaz moderna y despliegue sencillo en Vercel
+- Gunicorn en Render para servir Django en produccion
+- Migraciones automaticas al iniciar backend en Render Free
+
+## 8. Despliegue Actual
+
+Arquitectura de despliegue prevista:
+
+```text
+Vercel (frontend)
+  ↓
+Render (backend Django)
+  ↓
+Supabase PostgreSQL
+```
+
+## 9. Escalabilidad y Extension
+
+El sistema puede extenderse con relativa facilidad para:
+
+- nuevas categorias de reportes
+- reglas especificas por empresa
+- nuevos tipos de alertas
+- dashboards especializados
+- integraciones con lectores fisicos o ERPs
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const success = (message: string) => {
