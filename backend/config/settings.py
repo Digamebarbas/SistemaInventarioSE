@@ -41,6 +41,13 @@ ALLOWED_HOSTS = [
     for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     if host.strip()
 ]
+# Always allow Render and Vercel domains
+ALLOWED_HOSTS += [
+    ".onrender.com",
+    "sistemainventariose.onrender.com",
+    ".vercel.app",
+    "sistemainventariose.vercel.app",
+]
 
 
 # Application definition
